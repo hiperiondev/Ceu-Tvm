@@ -245,7 +245,8 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
 
             if (v5u8 == F32) {         // Source is a float
                 v1f = getMValf(v2u16);
-                setMVal(*(uint32_t*) &v1f, v1u16, v5u8, v4u8);
+                v1u32 = (uint32_t) v1f;
+                setMVal(v1u32, v1u16, v5u8, v4u8);
             } else {                 // Source is an integer
                 v1u32 = getMVal(v2u16, v5u8);
                 setMVal(v1u32, v1u16, v5u8, v4u8);

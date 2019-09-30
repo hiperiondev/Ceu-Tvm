@@ -403,7 +403,8 @@ float getMValf(uint16_t Maddr) {
 
 void setMVal(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp) {
     if (fromTp == F32) {
-        float value = *(float*) &buffer;
+
+        float value = (float) buffer;
         switch (toTp) {
             case U8:
                 *(uint8_t*) (MEM + Maddr) = (uint8_t) value;
