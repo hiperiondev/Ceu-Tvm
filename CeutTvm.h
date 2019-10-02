@@ -14,7 +14,7 @@
 void Decoder(uint8_t Opcode, uint8_t Modifier) {
      uint8_t v1u8, v2u8, v3u8, v4u8, v5u8, v6u8, v7u8, v8u8, v9u9;
     uint16_t v1u16, v2u16, v3u16, v4u16;
-    uint32_t v1u32;
+    uint32_t v1u32, v2u32;
        float v1f, v2f;
 
     switch (Opcode) {
@@ -245,7 +245,8 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
 
             if (v5u8 == F32) {         // Source is a float
                 v1f = getMValf(v2u16);
-                v1u32 = (uint32_t) v1f;
+                //setMVal(*(uint32_t*) &v1f, v1u16, v5u8, v4u8);
+                memcpy(&v1u32, &v1f, sizeof(float));
                 setMVal(v1u32, v1u16, v5u8, v4u8);
             } else {                 // Source is an integer
                 v1u32 = getMVal(v2u16, v5u8);
@@ -274,7 +275,9 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             else {
                 if (v4u8 == F32) {
                     v1f = (float) v1u32;
-                    setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
+                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
+                    memcpy(&v1u32, &v1f, sizeof(float));
+                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
                 } else {
                     setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
                 }
@@ -305,7 +308,9 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             else {
                 if (v9u9 == F32) {         // Source is a float
                     v1f = getMValf(v2u16);
-                    setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
+                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
+                    memcpy(&v1u32, &v1f, sizeof(float));
+                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
                 } else {                 // Source is an integer
                     v1u32 = getMVal(v2u16, v9u9);
                     setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
@@ -330,7 +335,9 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             else {
                 if (v4u8 == F32) { // Source/Target are float
                     v1f = popf();
-                    setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
+                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
+                    memcpy(&v1u32, &v1f, sizeof(float));
+                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
                 } else { // Source/Target are integer
                     v1u32 = pop();
                     setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), S32, v4u8);
@@ -481,7 +488,9 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             v1u16 = (uint16_t) pop();
             if (v4u8 == F32) {
                 v1f = popf();
-                setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                memcpy(&v1u32, &v1f, sizeof(float));
+                setMVal(v1u32, v1u16, F32, v4u8);
             } else {
                 v1u32 = pop();
                 setMVal(v1u32, v1u16, S32, v4u8);
@@ -545,7 +554,9 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             v1u16 = getPar16(v1u8);
             if (v4u8 == F32) {
                 v1f = popf();
-                setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                memcpy(&v1u32, &v1f, sizeof(float));
+                setMVal(v1u32, v1u16, F32, v4u8);
             } else {
                 v1u32 = pop();
                 setMVal(v1u32, v1u16, S32, v4u8);
@@ -565,8 +576,12 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             v1u16 = getPar16(v1u8);
             v1u32 = getPar32(v2u8);
             if (v4u8 == F32) {
-                v1f = *(float*) &v1u32;
-                setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                //v1f = *(float*) &v1u32;
+                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                memcpy(&v1f, &v1u32, sizeof(uint32_t)); //TODO: revisar, doble conversion
+                memcpy(&v2u32, &v1f, sizeof(float));
+                setMVal(v2u32, v1u16, F32, v4u8);
+
             } else {
                 setMVal(v1u32, v1u16, S32, v4u8);
             }
