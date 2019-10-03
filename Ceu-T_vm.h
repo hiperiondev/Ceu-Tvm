@@ -1,8 +1,19 @@
 /*
- * CeutTvm.h
+ * Copyright (c) 2019 Emiliano Augusto Gonzalez (comercial@hiperion.com.ar)
  *
- *  Created on: 28 sep. 2019
- *      Author: egonzalez
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * This code is based on project: http://afbranco.github.io/Terra/terra-home.html
  */
 
 #include <stdint.h>
@@ -226,28 +237,28 @@ static const uint8_t is_mask[] = {
         0x3f, 0x3f, 0x3f, 0x3f,
 };
 /////////////////////////////////////////
-    void evt_error(uint8_t v1);
-    void vm_custom_reset(void);
-    void vm_custom_call_function(uint8_t v);
-    void vm_custom_proc_outevt(uint8_t v1, uint32_t v2);
-    void ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3);
-    void ceu_trigger(uint16_t v1, uint16_t v2);
-    void ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4);
-    void ceu_track_clr(uint16_t v1, uint16_t v2);
-    void ceu_async_enable(uint16_t v1, uint16_t v2);
-    void push(uint32_t value);
-    void push_f(float value);
-    void set_mval(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp);
-   float popf();
-   float get_mval_f(uint16_t Maddr);
- uint8_t get_par8(uint8_t p_len);
- uint8_t get_bits(uint8_t data, uint8_t stBit, uint8_t endBit);
- uint8_t get_bits_pow(uint8_t data, uint8_t stBit, uint8_t endBit);
-uint16_t get_par16(uint8_t p_len);
-uint32_t unit2val(uint32_t val, uint8_t unit);
-uint32_t pop();
-uint32_t get_mval(uint16_t Maddr, uint8_t type);
-uint32_t get_par32(uint8_t p_len);
+    static void vm_evt_error(uint8_t v1);
+    static void vm_custom_reset(void);
+    static void vm_custom_call_function(uint8_t v);
+    static void vm_custom_proc_outevt(uint8_t v1, uint32_t v2);
+    static void vm_ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3);
+    static void vm_ceu_trigger(uint16_t v1, uint16_t v2);
+    static void vm_ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4);
+    static void vm_ceu_track_clr(uint16_t v1, uint16_t v2);
+    static void vm_ceu_async_enable(uint16_t v1, uint16_t v2);
+    static void vm_push(uint32_t value);
+    static void vm_push_f(float value);
+    static void vm_set_mval(uint32_t buffer, uint16_t maddr, uint8_t from_tp, uint8_t to_tp);
+   static float vm_pop_f();
+   static float vm_get_mval_f(uint16_t maddr);
+ static uint8_t vm_get_par8(void);
+ static uint8_t vm_get_bits(uint8_t data, uint8_t start_bit, uint8_t end_bit);
+ static uint8_t vm_get_bits_pow(uint8_t data, uint8_t start_bit, uint8_t end_bit);
+static uint16_t vm_get_par16(uint8_t p_len);
+static uint32_t vm_unit2val(uint32_t val, uint8_t unit);
+static uint32_t vm_pop();
+static uint32_t vm_get_mval(uint16_t maddr, uint8_t type);
+static uint32_t vm_get_par32(uint8_t p_len);
 /////////////////////////////////////////
 
 // for test
@@ -337,7 +348,6 @@ uint8_t vm_init() {
 uint8_t get_opcode(uint8_t* opcode, uint8_t* modifier) {
     uint8_t temp_opc;
     temp_opc = (uint8_t) (ceu_data[pc]);
-    printf("VM::getOpCode(): CEU_data[%d]=%d (0x%02x)  %s \n", pc, temp_opc, temp_opc, (temp_opc == op_end) ? "--> f_end" : "");
     pc++;
     *modifier = (uint8_t) (temp_opc & is_mask[(temp_opc >> 3)]);
     *opcode = (uint8_t) (temp_opc & ~is_mask[(temp_opc >> 3)]);
@@ -359,395 +369,395 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
         case op_end:
             break;
         case op_bnot:
-            v1u8 = pop();
-            push(~v1u8);
+            v1u8 = vm_pop();
+            vm_push(~v1u8);
             break;
         case op_lnot:
-            v1u8 = pop();
-            push(!v1u8);
+            v1u8 = vm_pop();
+            vm_push(!v1u8);
             break;
         case op_neg:
-            v1u8 = pop();
-            push(-1 * v1u8);
+            v1u8 = vm_pop();
+            vm_push(-1 * v1u8);
             break;
         case op_sub:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 - v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 - v2u8);
             break;
         case op_add:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 + v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 + v2u8);
             break;
         case op_mod:
-            v1u8 = pop();
-            v2u8 = pop();
-            push((v2u8 == 0) ? 0 : v1u8 % v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push((v2u8 == 0) ? 0 : v1u8 % v2u8);
             if (v2u8 == 0)
-                evt_error(E_DIVZERO);
+                vm_evt_error(E_DIVZERO);
             break;
         case op_mult:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 * v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 * v2u8);
             break;
         case op_div:
-            v1u8 = pop();
-            v2u8 = pop();
-            push((v2u8 == 0) ? 0 : v1u8 / v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push((v2u8 == 0) ? 0 : v1u8 / v2u8);
             if (v2u8 == 0)
-                evt_error(E_DIVZERO);
+                vm_evt_error(E_DIVZERO);
             break;
         case op_bor:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 | v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 | v2u8);
             break;
         case op_band:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 & v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 & v2u8);
             break;
         case op_lshft:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 << v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 << v2u8);
             break;
         case op_rshft:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 >> v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 >> v2u8);
             break;
         case op_bxor:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 ^ v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 ^ v2u8);
             break;
         case op_eq:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 == v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 == v2u8);
             break;
         case op_neq:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 != v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 != v2u8);
             break;
         case op_gte:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 >= v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 >= v2u8);
             break;
         case op_lte:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 <= v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 <= v2u8);
             break;
         case op_gt:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 > v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 > v2u8);
             break;
         case op_lt:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 < v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 < v2u8);
             break;
         case op_lor:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 || v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 || v2u8);
             break;
         case op_land:
-            v1u8 = pop();
-            v2u8 = pop();
-            push(v1u8 && v2u8);
+            v1u8 = vm_pop();
+            v2u8 = vm_pop();
+            vm_push(v1u8 && v2u8);
             break;
         case op_popx:
-            pop();
+            vm_pop();
             break;
         case op_neg_f:
-            v1f = popf();
+            v1f = vm_pop_f();
             v1f = -1 * v1f;
-            push_f(v1f);
+            vm_push_f(v1f);
             break;
         case op_sub_f:
-            v1f = popf();
-            v2f = popf();
-            push_f(v1f - v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push_f(v1f - v2f);
             break;
         case op_add_f:
-            v1f = popf();
-            v2f = popf();
-            push_f(v1f + v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push_f(v1f + v2f);
             break;
         case op_mult_f:
-            v1f = popf();
-            v2f = popf();
-            push_f(v1f * v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push_f(v1f * v2f);
             break;
         case op_div_f:
-            v1f = popf();
-            v2f = popf();
-            push_f(v1f / v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push_f(v1f / v2f);
             break;
         case op_eq_f:
-            v1f = popf();
-            v2f = popf();
-            push(v1f == v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push(v1f == v2f);
             break;
         case op_neq_f:
-            v1f = popf();
-            v2f = popf();
-            push(v1f != v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push(v1f != v2f);
             break;
         case op_gte_f:
-            v1f = popf();
-            v2f = popf();
-            push(v1f >= v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push(v1f >= v2f);
             break;
         case op_lte_f:
-            v1f = popf();
-            v2f = popf();
-            push(v1f <= v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push(v1f <= v2f);
             break;
         case op_gt_f:
-            v1f = popf();
-            v2f = popf();
-            push(v1f > v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push(v1f > v2f);
             break;
         case op_lt_f:
-            v1f = popf();
-            v2f = popf();
-            push(v1f < v2f);
+            v1f = vm_pop_f();
+            v2f = vm_pop_f();
+            vm_push(v1f < v2f);
             break;
         case op_func:
-            v1u8 = get_par8(1);
+            v1u8 = vm_get_par8();
             vm_custom_call_function(v1u8);
             break;
         case op_outevt_e:
-            v1u32 = pop();
-            v1u8  = get_par8(1);
+            v1u32 = vm_pop();
+            v1u8  = vm_get_par8();
             vm_custom_proc_outevt(v1u8, v1u32);
             break;
         case op_outevt_z:
-            v3u8 = get_par8(1);
+            v3u8 = vm_get_par8();
             vm_custom_proc_outevt(v3u8, 0);
             break;
         case op_clken_e:
             v1u32 = 0;
-            modifier = get_par8(1);
-            v1u8  = get_bits_pow(modifier, 1, 1);
-            v2u8  = get_bits_pow(modifier, 0, 0);
-            v3u8  = get_bits(modifier, 4, 6);
-            v1u16 = get_par16(v1u8);
-            v3u16 = get_par16(v2u8);
-            v1u32 = pop();
-            ceu_wclock_enable(v1u16, (int32_t) unit2val(v1u32, v3u8), v3u16);
+            modifier = vm_get_par8();
+            v1u8  = vm_get_bits_pow(modifier, 1, 1);
+            v2u8  = vm_get_bits_pow(modifier, 0, 0);
+            v3u8  = vm_get_bits(modifier, 4, 6);
+            v1u16 = vm_get_par16(v1u8);
+            v3u16 = vm_get_par16(v2u8);
+            v1u32 = vm_pop();
+            vm_ceu_wclock_enable(v1u16, (int32_t) vm_unit2val(v1u32, v3u8), v3u16);
             break;
         case op_clken_v:
             v1u32 = 0;
-            modifier = get_par8(1);
-            v4u8  = get_bits(modifier, 5, 7);
-            v5u8  = get_bits(modifier, 3, 4); // Expect type with 2 bits -- only unsigned integer
-            v1u8  = get_bits_pow(modifier, 2, 2);
-            v2u8  = get_bits_pow(modifier, 1, 1);
-            v3u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            v2u16 = get_par16(v2u8);
-            v3u16 = get_par16(v3u8);
-            v1u32 = get_mval(v2u16, v5u8);
-            ceu_wclock_enable(v1u16, (int32_t) unit2val(v1u32, v4u8), v3u16);
+            modifier = vm_get_par8();
+            v4u8  = vm_get_bits(modifier, 5, 7);
+            v5u8  = vm_get_bits(modifier, 3, 4); // Expect type with 2 bits -- only unsigned integer
+            v1u8  = vm_get_bits_pow(modifier, 2, 2);
+            v2u8  = vm_get_bits_pow(modifier, 1, 1);
+            v3u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            v2u16 = vm_get_par16(v2u8);
+            v3u16 = vm_get_par16(v3u8);
+            v1u32 = vm_get_mval(v2u16, v5u8);
+            vm_ceu_wclock_enable(v1u16, (int32_t) vm_unit2val(v1u32, v4u8), v3u16);
             break;
         case op_clken_c:
-            modifier = get_par8(1);
-            v1u8  = get_bits_pow(modifier, 3, 3);
-            v2u8  = (uint8_t) (get_bits(modifier, 1, 2) + 1);
-            v3u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            v1u32 = get_par32(v2u8);
-            v3u16 = get_par16(v3u8);
-            ceu_wclock_enable(v1u16, (int32_t) v1u32, v3u16);
+            modifier = vm_get_par8();
+            v1u8  = vm_get_bits_pow(modifier, 3, 3);
+            v2u8  = (uint8_t) (vm_get_bits(modifier, 1, 2) + 1);
+            v3u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            v1u32 = vm_get_par32(v2u8);
+            v3u16 = vm_get_par16(v3u8);
+            vm_ceu_wclock_enable(v1u16, (int32_t) v1u32, v3u16);
             break;
         case op_set_v:
-            modifier = get_par8(1);
-            v1u8  = get_bits_pow(modifier, 7, 7);
-            v4u8  = get_bits(modifier, 4, 6);
-            v2u8  = get_bits_pow(modifier, 3, 3);
-            v5u8  = get_bits(modifier, 0, 2);
-            v1u16 = get_par16(v1u8);
-            v2u16 = get_par16(v2u8);
+            modifier = vm_get_par8();
+            v1u8  = vm_get_bits_pow(modifier, 7, 7);
+            v4u8  = vm_get_bits(modifier, 4, 6);
+            v2u8  = vm_get_bits_pow(modifier, 3, 3);
+            v5u8  = vm_get_bits(modifier, 0, 2);
+            v1u16 = vm_get_par16(v1u8);
+            v2u16 = vm_get_par16(v2u8);
             if (v5u8 == F32) {         // Source is a float
-                v1f = get_mval_f(v2u16);
+                v1f = vm_get_mval_f(v2u16);
                 //setMVal(*(uint32_t*) &v1f, v1u16, v5u8, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
-                set_mval(v1u32, v1u16, v5u8, v4u8);
+                vm_set_mval(v1u32, v1u16, v5u8, v4u8);
             } else {                 // Source is an integer
-                v1u32 = get_mval(v2u16, v5u8);
-                set_mval(v1u32, v1u16, v5u8, v4u8);
+                v1u32 = vm_get_mval(v2u16, v5u8);
+                vm_set_mval(v1u32, v1u16, v5u8, v4u8);
             }
             break;
         case op_setarr_vc:
-            modifier = get_par8(1);
-            v8u8  = get_par8(1);
-            v1u8  = get_bits_pow(modifier, 7, 7);
-            v4u8  = get_bits(modifier, 4, 6);
-            v2u8  = get_bits_pow(modifier, 3, 3);
-            v5u8  = get_bits(modifier, 0, 2);
-            v3u8  = get_bits_pow(v8u8, 2, 2);
-            v7u8  = (uint8_t) (get_bits(v8u8, 0, 1) + 1);
+            modifier = vm_get_par8();
+            v8u8  = vm_get_par8();
+            v1u8  = vm_get_bits_pow(modifier, 7, 7);
+            v4u8  = vm_get_bits(modifier, 4, 6);
+            v2u8  = vm_get_bits_pow(modifier, 3, 3);
+            v5u8  = vm_get_bits(modifier, 0, 2);
+            v3u8  = vm_get_bits_pow(v8u8, 2, 2);
+            v7u8  = (uint8_t) (vm_get_bits(v8u8, 0, 1) + 1);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-            v1u16 = get_par16(v1u8);
-            v3u16 = get_par16(v2u8);
-            v4u16 = get_par16(v3u8);
-            v1u32 = get_par32(v7u8);
-            if (get_mval(v3u16, v5u8) >= v4u16)
-                evt_error(E_IDXOVF);
+            v1u16 = vm_get_par16(v1u8);
+            v3u16 = vm_get_par16(v2u8);
+            v4u16 = vm_get_par16(v3u8);
+            v1u32 = vm_get_par32(v7u8);
+            if (vm_get_mval(v3u16, v5u8) >= v4u16)
+                vm_evt_error(E_IDXOVF);
             else {
                 if (v4u8 == F32) {
                     v1f = (float) v1u32;
                     //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
-                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
+                    vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
                 } else {
-                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
+                    vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
                 }
             }
             break;
         case op_setarr_vv:
-            modifier = get_par8(1);
-            v8u8  = get_par8(1);
-            v1u8  = get_bits_pow(modifier, 7, 7);
-            v4u8  = get_bits(modifier, 4, 6);
-            v2u8  = get_bits_pow(modifier, 3, 3);
-            v5u8  = get_bits(modifier, 0, 2);
-            v3u8  = get_bits_pow(v8u8, 4, 4);
-            v7u8  = get_bits_pow(v8u8, 3, 3);
-            v9u9  = get_bits(v8u8, 0, 2);
+            modifier = vm_get_par8();
+            v8u8  = vm_get_par8();
+            v1u8  = vm_get_bits_pow(modifier, 7, 7);
+            v4u8  = vm_get_bits(modifier, 4, 6);
+            v2u8  = vm_get_bits_pow(modifier, 3, 3);
+            v5u8  = vm_get_bits(modifier, 0, 2);
+            v3u8  = vm_get_bits_pow(v8u8, 4, 4);
+            v7u8  = vm_get_bits_pow(v8u8, 3, 3);
+            v9u9  = vm_get_bits(v8u8, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-            v1u16 = get_par16(v1u8);
-            v3u16 = get_par16(v2u8);
-            v4u16 = get_par16(v3u8);
-            v2u16 = get_par16(v7u8);
-            if (get_mval(v3u16, v5u8) >= v4u16)
-                evt_error(E_IDXOVF);
+            v1u16 = vm_get_par16(v1u8);
+            v3u16 = vm_get_par16(v2u8);
+            v4u16 = vm_get_par16(v3u8);
+            v2u16 = vm_get_par16(v7u8);
+            if (vm_get_mval(v3u16, v5u8) >= v4u16)
+                vm_evt_error(E_IDXOVF);
             else {
                 if (v9u9 == F32) {         // Source is a float
-                    v1f = get_mval_f(v2u16);
+                    v1f = vm_get_mval_f(v2u16);
                     //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
-                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
+                    vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
                 } else {                 // Source is an integer
-                    v1u32 = get_mval(v2u16, v9u9);
-                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
+                    v1u32 = vm_get_mval(v2u16, v9u9);
+                    vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
                 }
             }
             break;
         case op_poparr_v:
-            v3u8  = get_bits_pow(modifier, 0, 0);
-            v8u8  = get_par8(1);
-            v1u8  = get_bits_pow(v8u8, 7, 7);
-            v4u8  = get_bits(v8u8, 4, 6);
-            v2u8  = get_bits_pow(v8u8, 3, 3);
-            v5u8  = get_bits(v8u8, 0, 2);
+            v3u8  = vm_get_bits_pow(modifier, 0, 0);
+            v8u8  = vm_get_par8();
+            v1u8  = vm_get_bits_pow(v8u8, 7, 7);
+            v4u8  = vm_get_bits(v8u8, 4, 6);
+            v2u8  = vm_get_bits_pow(v8u8, 3, 3);
+            v5u8  = vm_get_bits(v8u8, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-            v1u16 = get_par16(v1u8);
-            v3u16 = get_par16(v2u8);
-            v4u16 = get_par16(v3u8);
-            if (get_mval(v3u16, v5u8) >= v4u16)
-                evt_error(E_IDXOVF);
+            v1u16 = vm_get_par16(v1u8);
+            v3u16 = vm_get_par16(v2u8);
+            v4u16 = vm_get_par16(v3u8);
+            if (vm_get_mval(v3u16, v5u8) >= v4u16)
+                vm_evt_error(E_IDXOVF);
             else {
                 if (v4u8 == F32) { // Source/Target are float
-                    v1f = popf();
+                    v1f = vm_pop_f();
                     //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
-                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
+                    vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
                 } else { // Source/Target are integer
-                    v1u32 = pop();
-                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), S32, v4u8);
+                    v1u32 = vm_pop();
+                    vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), S32, v4u8);
                 }
             }
             break;
         case op_pusharr_v:
-            v3u8  = get_bits_pow(modifier, 0, 0);
-            v8u8  = get_par8(1);
-            v1u8  = get_bits_pow(v8u8, 7, 7);
-            v4u8  = get_bits(v8u8, 4, 6);
-            v2u8  = get_bits_pow(v8u8, 3, 3);
-            v5u8  = get_bits(v8u8, 0, 2);
+            v3u8  = vm_get_bits_pow(modifier, 0, 0);
+            v8u8  = vm_get_par8();
+            v1u8  = vm_get_bits_pow(v8u8, 7, 7);
+            v4u8  = vm_get_bits(v8u8, 4, 6);
+            v2u8  = vm_get_bits_pow(v8u8, 3, 3);
+            v5u8  = vm_get_bits(v8u8, 0, 2);
             v1u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
             v2u8  = (v5u8 == F32) ? 4 : 1 << (v5u8 & 0x3);
-            v1u16 = get_par16(v1u8);
-            v3u16 = get_par16(v2u8);
-            v4u16 = get_par16(v3u8);
-            if (get_mval(v3u16, v5u8) >= v4u16)
-                evt_error(E_IDXOVF);
+            v1u16 = vm_get_par16(v1u8);
+            v3u16 = vm_get_par16(v2u8);
+            v4u16 = vm_get_par16(v3u8);
+            if (vm_get_mval(v3u16, v5u8) >= v4u16)
+                vm_evt_error(E_IDXOVF);
             else {
-                push(v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v1u8));
+                vm_push(v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v1u8));
             }
             break;
         case op_getextdt_e:
-            v1u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = (uint16_t) pop();
-            v2u16 = get_par16(v1u8);
+            v1u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = (uint16_t) vm_pop();
+            v2u16 = vm_get_par16(v1u8);
             memcpy((mem + v1u16), CEU->ext_data, v2u16);
             break;
         case op_trg:
-            v1u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            ceu_trigger(v1u16, 0);
+            v1u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            vm_ceu_trigger(v1u16, 0);
             break;
         case op_exec:
-            v1u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
+            v1u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
             pc = v1u16;
             break;
         case op_chkret:
-            v1u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
+            v1u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
             if (*(uint8_t*) (mem + v1u16) > 0)
                 pc = pc + 1;
             break;
         case op_tkins_z:
-            v2u8  = get_bits_pow(modifier, 0, 0);
-            v4u8  = get_par8(1);
-            v3u8  = get_bits(v4u8, 7, 7);
-            v1u8  = get_bits(v4u8, 0, 6);
-            v3u16 = get_par16(v2u8);
-            ceu_track_ins(0, v1u8, v3u8, v3u16);
+            v2u8  = vm_get_bits_pow(modifier, 0, 0);
+            v4u8  = vm_get_par8();
+            v3u8  = vm_get_bits(v4u8, 7, 7);
+            v1u8  = vm_get_bits(v4u8, 0, 6);
+            v3u16 = vm_get_par16(v2u8);
+            vm_ceu_track_ins(0, v1u8, v3u8, v3u16);
             break;
         case op_push_c:
-            v1u8  = (uint8_t) (get_bits(modifier, 0, 1) + 1);
-            v1u32 = get_par32(v1u8);
-            push(v1u32);
+            v1u8  = (uint8_t) (vm_get_bits(modifier, 0, 1) + 1);
+            v1u32 = vm_get_par32(v1u8);
+            vm_push(v1u32);
             break;
         case op_cast:
-            v1u8 = get_bits(modifier, 0, 1);
+            v1u8 = vm_get_bits(modifier, 0, 1);
             switch (v1u8) {
                 case U32_F:
-                    v1u32 = pop();
-                    push_f((float) *(uint32_t*) &v1u32);
+                    v1u32 = vm_pop();
+                    vm_push_f((float) *(uint32_t*) &v1u32);
                     break;
                 case S32_F:
-                    v1u32 = pop();
-                    push_f((float) *(int32_t*) &v1u32);
+                    v1u32 = vm_pop();
+                    vm_push_f((float) *(int32_t*) &v1u32);
                     break;
                 case F_U32:
-                    v1f = popf();
-                    push((uint32_t) *(float*) &v1f);
+                    v1f = vm_pop_f();
+                    vm_push((uint32_t) *(float*) &v1f);
                     break;
                 case F_S32:
-                    v1f = popf();
-                    push((uint32_t) *(float*) &v1f);
+                    v1f = vm_pop_f();
+                    vm_push((uint32_t) *(float*) &v1f);
                     break;
             }
             break;
         case op_memclr:
-            v1u8  = get_bits_pow(modifier, 1, 1);
-            v2u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            v2u16 = get_par16(v2u8);
+            v1u8  = vm_get_bits_pow(modifier, 1, 1);
+            v2u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            v2u16 = vm_get_par16(v2u8);
             memset((mem+v1u16),0,v2u16); // does not work in TOSSIM
             //{
             //    int x;
@@ -756,156 +766,156 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             //}
             break;
         case op_ifelse:
-            v1u8  = get_bits_pow(modifier, 1, 1);
-            v2u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            v2u16 = get_par16(v2u8);
-            if (pop())
+            v1u8  = vm_get_bits_pow(modifier, 1, 1);
+            v2u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            v2u16 = vm_get_par16(v2u8);
+            if (vm_pop())
                 pc = v1u16;
             else
                 pc = v2u16;
             break;
         case op_asen:
-            v1u8  = get_bits_pow(modifier, 1, 1);
-            v2u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            v3u16 = get_par16(v2u8);
-            ceu_async_enable(v1u16, v3u16);
+            v1u8  = vm_get_bits_pow(modifier, 1, 1);
+            v2u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            v3u16 = vm_get_par16(v2u8);
+            vm_ceu_async_enable(v1u16, v3u16);
             break;
         case op_tkclr:
-            v1u8  = get_bits_pow(modifier, 1, 1);
-            v2u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            v2u16 = get_par16(v2u8);
-            ceu_track_clr(v1u16, v2u16);
+            v1u8  = vm_get_bits_pow(modifier, 1, 1);
+            v2u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            v2u16 = vm_get_par16(v2u8);
+            vm_ceu_track_clr(v1u16, v2u16);
             break;
         case op_outevt_c:
-            v1u8  = (uint8_t) (get_bits(modifier, 0, 1) + 1);
-            v3u8  = get_par8(1);
-            v1u32 = get_par32(v1u8);
+            v1u8  = (uint8_t) (vm_get_bits(modifier, 0, 1) + 1);
+            v3u8  = vm_get_par8();
+            v1u32 = vm_get_par32(v1u8);
             vm_custom_proc_outevt(v3u8, v1u32);
             break;
         case op_getextdt_v:
-            v1u8  = get_bits_pow(modifier, 1, 1);
-            v2u8  = get_bits_pow(modifier, 0, 0);
-            v1u16 = get_par16(v1u8);
-            v2u16 = get_par16(v2u8);
+            v1u8  = vm_get_bits_pow(modifier, 1, 1);
+            v2u8  = vm_get_bits_pow(modifier, 0, 0);
+            v1u16 = vm_get_par16(v1u8);
+            v2u16 = vm_get_par16(v2u8);
             memcpy((mem + v1u16), CEU->ext_data, v2u16);
             break;
         case op_inc:
-            v4u8  = get_bits(modifier, 0, 1);
+            v4u8  = vm_get_bits(modifier, 0, 1);
             v6u8  = 1 << v4u8;
-            v1u16 = (uint16_t) pop();
-            set_mval((get_mval(v1u16, v4u8) + 1), v1u16, v4u8, v4u8);
+            v1u16 = (uint16_t) vm_pop();
+            vm_set_mval((vm_get_mval(v1u16, v4u8) + 1), v1u16, v4u8, v4u8);
             break;
         case op_dec:
-            v4u8  = get_bits(modifier, 0, 1);
+            v4u8  = vm_get_bits(modifier, 0, 1);
             v6u8  = 1 << v4u8;
-            v1u16 = (uint16_t) pop();
-            set_mval((get_mval(v1u16, v4u8) - 1), v1u16, v4u8, v4u8);
+            v1u16 = (uint16_t) vm_pop();
+            vm_set_mval((vm_get_mval(v1u16, v4u8) - 1), v1u16, v4u8, v4u8);
             break;
         case op_set_e:
-            v4u8  = get_bits(modifier, 0, 2);
+            v4u8  = vm_get_bits(modifier, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-            v1u16 = (uint16_t) pop();
+            v1u16 = (uint16_t) vm_pop();
             if (v4u8 == F32) {
-                v1f = popf();
+                v1f = vm_pop_f();
                 //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
-                set_mval(v1u32, v1u16, F32, v4u8);
+                vm_set_mval(v1u32, v1u16, F32, v4u8);
             } else {
-                v1u32 = pop();
-                set_mval(v1u32, v1u16, S32, v4u8);
+                v1u32 = vm_pop();
+                vm_set_mval(v1u32, v1u16, S32, v4u8);
             }
             break;
         case op_deref:
-            v1u8  = get_bits(modifier, 0, 2);
-            v1u16 = (uint16_t) pop();
+            v1u8  = vm_get_bits(modifier, 0, 2);
+            v1u16 = (uint16_t) vm_pop();
             switch (v1u8) {
                 case U8:
-                    push((uint8_t) get_mval(v1u16, v1u8));
+                    vm_push((uint8_t) vm_get_mval(v1u16, v1u8));
                     break;
                 case U16:
-                    push((uint16_t) get_mval(v1u16, v1u8));
+                    vm_push((uint16_t) vm_get_mval(v1u16, v1u8));
                     break;
                 case U32:
-                    push((uint32_t) get_mval(v1u16, v1u8));
+                    vm_push((uint32_t) vm_get_mval(v1u16, v1u8));
                     break;
                 case F32:
-                    push_f(get_mval_f(v1u16));
+                    vm_push_f(vm_get_mval_f(v1u16));
                     break;
                 case S8:
-                    push((int8_t) get_mval(v1u16, v1u8));
+                    vm_push((int8_t) vm_get_mval(v1u16, v1u8));
                     break;
                 case S16:
-                    push((int16_t) get_mval(v1u16, v1u8));
+                    vm_push((int16_t) vm_get_mval(v1u16, v1u8));
                     break;
                 case S32:
-                    push((int32_t) get_mval(v1u16, v1u8));
+                    vm_push((int32_t) vm_get_mval(v1u16, v1u8));
                     break;
             }
             break;
         case op_memcpy:
-            v1u8  = get_bits_pow(modifier, 2, 2);
-            v2u8  = get_bits_pow(modifier, 1, 1);
-            v3u8  = get_bits_pow(modifier, 0, 0);
-            v2u16 = get_par16(v1u8);
-            v1u16 = get_par16(v2u8);
-            v3u16 = get_par16(v3u8);
+            v1u8  = vm_get_bits_pow(modifier, 2, 2);
+            v2u8  = vm_get_bits_pow(modifier, 1, 1);
+            v3u8  = vm_get_bits_pow(modifier, 0, 0);
+            v2u16 = vm_get_par16(v1u8);
+            v1u16 = vm_get_par16(v2u8);
+            v3u16 = vm_get_par16(v3u8);
             memcpy((void*) (mem + v3u16), (void*) (mem + v1u16), v2u16);
             break;
         case op_tkins_max:
-            v2u8  = (uint8_t) (CEU->stack + get_bits(modifier, 1, 2));
-            v1u8  = get_bits_pow(modifier, 0, 0);
-            v3u16 = get_par16(v1u8);
-            ceu_track_ins(v2u8, 255, 0, v3u16);
+            v2u8  = (uint8_t) (CEU->stack + vm_get_bits(modifier, 1, 2));
+            v1u8  = vm_get_bits_pow(modifier, 0, 0);
+            v3u16 = vm_get_par16(v1u8);
+            vm_ceu_track_ins(v2u8, 255, 0, v3u16);
             break;
         case op_push_v:
-            v1u8  = get_bits_pow(modifier, 3, 3);
-            v4u8  = get_bits(modifier, 0, 2);
-            v1u16 = get_par16(v1u8);
+            v1u8  = vm_get_bits_pow(modifier, 3, 3);
+            v4u8  = vm_get_bits(modifier, 0, 2);
+            v1u16 = vm_get_par16(v1u8);
             if (v4u8 == F32) {
-                push_f(get_mval_f(v1u16));
+                vm_push_f(vm_get_mval_f(v1u16));
             } else {
-                push(get_mval(v1u16, v4u8));
+                vm_push(vm_get_mval(v1u16, v4u8));
             }
             break;
         case op_pop:
-            v1u8  = get_bits_pow(modifier, 3, 3);
-            v4u8  = get_bits(modifier, 0, 2);
-            v1u16 = get_par16(v1u8);
+            v1u8  = vm_get_bits_pow(modifier, 3, 3);
+            v4u8  = vm_get_bits(modifier, 0, 2);
+            v1u16 = vm_get_par16(v1u8);
             if (v4u8 == F32) {
-                v1f = popf();
+                v1f = vm_pop_f();
                 //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
-                set_mval(v1u32, v1u16, F32, v4u8);
+                vm_set_mval(v1u32, v1u16, F32, v4u8);
             } else {
-                v1u32 = pop();
-                set_mval(v1u32, v1u16, S32, v4u8);
+                v1u32 = vm_pop();
+                vm_set_mval(v1u32, v1u16, S32, v4u8);
             }
             break;
         case op_outEvt_v:
-            v2u8  = get_bits_pow(modifier, 3, 3);
-            v3u8  = get_par8(1);
-            v1u16 = get_par16(v2u8);
+            v2u8  = vm_get_bits_pow(modifier, 3, 3);
+            v3u8  = vm_get_par8();
+            v1u16 = vm_get_par16(v2u8);
             vm_custom_proc_outevt(v3u8, v1u16);
             break;
         case op_set_c:
-            v4u8  = get_bits(modifier, 0, 2);
+            v4u8  = vm_get_bits(modifier, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-            v1u8  = get_bits_pow(modifier, 3, 3);
-            v2u8  = (uint8_t) (get_bits(modifier, 4, 5) + 1);
-            v1u16 = get_par16(v1u8);
-            v1u32 = get_par32(v2u8);
+            v1u8  = vm_get_bits_pow(modifier, 3, 3);
+            v2u8  = (uint8_t) (vm_get_bits(modifier, 4, 5) + 1);
+            v1u16 = vm_get_par16(v1u8);
+            v1u32 = vm_get_par32(v2u8);
             if (v4u8 == F32) {
                 //v1f = *(float*) &v1u32;
                 //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1f, &v1u32, sizeof(uint32_t)); //TODO: revisar, doble conversion
                 memcpy(&v2u32, &v1f, sizeof(float));
-                set_mval(v2u32, v1u16, F32, v4u8);
+                vm_set_mval(v2u32, v1u16, F32, v4u8);
 
             } else {
-                set_mval(v1u32, v1u16, S32, v4u8);
+                vm_set_mval(v1u32, v1u16, S32, v4u8);
             }
             break;
     }
@@ -913,60 +923,64 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
 
 //////////////// internal /////////////////
 
-void evt_error(uint8_t v1) {
-    printf("evtError %d\n", v1);
+static void vm_evt_error(uint8_t v1) {
+    printf("evt_error %d\n", v1);
 }
 
 //
-void vm_custom_reset(void) {
-    printf("VMCustom_reset\n");
+static void vm_custom_reset(void) {
+    printf("vm_custom_reset\n");
 }
 
 //
-void vm_custom_call_function(uint8_t v) {
-    printf("VMCustom_callFunction %d\n", v);
+static void vm_custom_call_function(uint8_t v) {
+    printf("vm_custom_call_function %d\n", v);
 }
 
 //
-void vm_custom_proc_outevt(uint8_t v1, uint32_t v2) {
-    printf("VMCustom_procOutEvt %d, %d\n", v1, v2);
+static void vm_custom_proc_outevt(uint8_t v1, uint32_t v2) {
+    printf("vm_custom_proc_outevt %d, %d\n", v1, v2);
 }
 
 //
-void ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3) {
+static void vm_ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3) {
     printf("ceu_wclock_enable %d, %d, %d\n", v1, v2, v3);
 }
 
 //
-void ceu_trigger(uint16_t v1, uint16_t v2) {
+static void vm_ceu_trigger(uint16_t v1, uint16_t v2) {
     printf("ceu_trigger %d, %d\n", v1, v2);
 }
 
 //
-void ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4) {
+static void vm_ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4) {
     printf("ceu_track_ins %d, %d, %d, %d\n", v1, v2, v3, v4);
 }
 
 //
-void ceu_track_clr(uint16_t v1, uint16_t v2) {
+static void vm_ceu_track_clr(uint16_t v1, uint16_t v2) {
     printf("ceu_track_clr %d, %d\n", v1, v2);
 }
 
 //
-void ceu_async_enable(uint16_t v1, uint16_t v2) {
+static void vm_ceu_async_enable(uint16_t v1, uint16_t v2) {
     printf("ceu_async_enable %d, %d\n", v1, v2);
 }
 
 /////////////////// aux ///////////////////
 
 // Get constant values from program memory. Convert big-endian to the local type endian.
-uint8_t get_par8(uint8_t p_len) {
+
+// get byte
+static uint8_t vm_get_par8(void) {
     uint8_t temp = (uint8_t) ceu_data[pc];
     pc++;
     return temp;
 }
 
-uint16_t get_par16(uint8_t p_len) {
+// get uint16
+// load p_len bytes
+static uint16_t vm_get_par16(uint8_t p_len) {
     uint16_t temp = 0L;
     switch (p_len) {
         case 1:
@@ -983,7 +997,9 @@ uint16_t get_par16(uint8_t p_len) {
     return temp;
 }
 
-uint32_t get_par32(uint8_t p_len) {
+// get uint32
+// load p_len bytes
+static uint32_t vm_get_par32(uint8_t p_len) {
     uint32_t temp = 0L;
     switch (p_len) {
         case 1:
@@ -1018,18 +1034,21 @@ uint32_t get_par32(uint8_t p_len) {
     return temp;
 }
 
-uint8_t get_bits(uint8_t data, uint8_t stBit, uint8_t endBit) {
+// return bits
+static uint8_t vm_get_bits(uint8_t data, uint8_t start_bit, uint8_t end_bit) {
     uint8_t ret = 0;
-    ret = (data << (7 - endBit));
-    ret = ret >> (7 - endBit + stBit);
+    ret = (data << (7 - end_bit));
+    ret = ret >> (7 - end_bit + start_bit);
     return ret;
 }
 
-uint8_t get_bits_pow(uint8_t data, uint8_t stBit, uint8_t endBit) {
-    return (1 << get_bits(data, stBit, endBit));
+//return 2 ^ vm_get_bits
+static uint8_t vm_get_bits_pow(uint8_t data, uint8_t start_bit, uint8_t end_bit) {
+    return (1 << vm_get_bits(data, start_bit, end_bit));
 }
 
-uint32_t unit2val(uint32_t val, uint8_t unit) {
+// convert time ms
+static uint32_t vm_unit2val(uint32_t val, uint8_t unit) {
     switch (unit) { // result in 'ms'
         case 0:
             return (uint32_t) (val); // ms
@@ -1043,143 +1062,150 @@ uint32_t unit2val(uint32_t val, uint8_t unit) {
     return val;
 }
 
-void push(uint32_t value) {
+// push uint32 on stack
+static void vm_push(uint32_t value) {
     curr_stack = curr_stack - 4;
     if ((curr_stack) > env_data.prog_end)
         *(uint32_t*) (ceu_data + curr_stack) = value;
     else {
-        evt_error(E_STKOVF);
+        vm_evt_error(E_STKOVF);
         // stop VM execution to prEVENT unexpected state
         halted_flag = true;
         vm_custom_reset();
     }
 }
 
-void push_f(float value) {
+// push float on stack
+static void vm_push_f(float value) {
     curr_stack = curr_stack - 4;
     if ((curr_stack) > env_data.prog_end) {
         *(float*) (ceu_data + curr_stack) = value;
     } else {
-        evt_error(E_STKOVF);
+        vm_evt_error(E_STKOVF);
         // stop VM execution to prEVENT unexpected state
         halted_flag = true;
         vm_custom_reset();
     }
 }
 
-uint32_t pop() {
+// pop uint32 from stack
+static uint32_t vm_pop() {
     curr_stack = curr_stack + 4;
     return *(uint32_t*) (ceu_data + curr_stack - 4);
 }
 
-float popf() {
+// pop float from stack
+static float vm_pop_f() {
     curr_stack = curr_stack + 4;
     return *(float*) (ceu_data + curr_stack - 4);
 }
 
-uint32_t get_mval(uint16_t Maddr, uint8_t type) {
+// get value from memory
+static uint32_t vm_get_mval(uint16_t maddr, uint8_t type) {
     switch (type) {
         case U8:
-            return (uint32_t) *(uint8_t*) (mem + Maddr);
+            return (uint32_t) *(uint8_t*) (mem + maddr);
         case U16:
-            return (uint32_t) *(uint16_t*) (mem + Maddr);
+            return (uint32_t) *(uint16_t*) (mem + maddr);
         case U32:
-            return (uint32_t) *(uint32_t*) (mem + Maddr);
+            return (uint32_t) *(uint32_t*) (mem + maddr);
         case S8:
-            return (uint32_t) *(int8_t*) (mem + Maddr);
+            return (uint32_t) *(int8_t*) (mem + maddr);
         case S16:
-            return (uint32_t) *(int16_t*) (mem + Maddr);
+            return (uint32_t) *(int16_t*) (mem + maddr);
         case S32:
-            return (uint32_t) *(int32_t*) (mem + Maddr);
+            return (uint32_t) *(int32_t*) (mem + maddr);
     }
     printf("ERROR VM::getMVal(): Invalid type=%d\n", type);
     return 0;
 }
 
-float get_mval_f(uint16_t Maddr) {
-    return (float) *(float*) (mem + Maddr);
+//get float from memory
+static float vm_get_mval_f(uint16_t maddr) {
+    return (float) *(float*) (mem + maddr);
 }
 
-void set_mval(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp) {
-    if (fromTp == F32) {
+// put buffer on memory
+static void vm_set_mval(uint32_t buffer, uint16_t maddr, uint8_t from_tp, uint8_t to_tp) {
+    if (from_tp == F32) {
         //float value = *(float*) &buffer; //type-punning error
         float value;
         memcpy(&value, &buffer, sizeof(uint32_t));
-        switch (toTp) {
+        switch (to_tp) {
             case U8:
-                *(uint8_t*) (mem + Maddr) = (uint8_t) value;
+                *(uint8_t*) (mem + maddr) = (uint8_t) value;
                 return;
             case U16:
-                *(uint16_t*) (mem + Maddr) = (uint16_t) value;
+                *(uint16_t*) (mem + maddr) = (uint16_t) value;
                 return;
             case U32:
-                *(uint32_t*) (mem + Maddr) = (uint32_t) value;
+                *(uint32_t*) (mem + maddr) = (uint32_t) value;
                 return;
             case F32:
-                *(float*) (mem + Maddr) = (float) value;
+                *(float*) (mem + maddr) = (float) value;
                 return;
             case S8:
-                *(int8_t*) (mem + Maddr) = (int8_t) value;
+                *(int8_t*) (mem + maddr) = (int8_t) value;
                 return;
             case S16:
-                *(int16_t*) (mem + Maddr) = (int16_t) value;
+                *(int16_t*) (mem + maddr) = (int16_t) value;
                 return;
             case S32:
-                *(int32_t*) (mem + Maddr) = (int32_t) value;
+                *(int32_t*) (mem + maddr) = (int32_t) value;
                 return;
         }
     } else {
-        if (fromTp <= F32) { // from unsignal integer
+        if (from_tp <= F32) { // from unsignal integer
             uint32_t value = *(uint32_t*) &buffer;
-            switch (toTp) {
+            switch (to_tp) {
                 case U8:
-                    *(uint8_t*) (mem + Maddr) = (uint8_t) value;
+                    *(uint8_t*) (mem + maddr) = (uint8_t) value;
                     return;
                 case U16:
-                    *(uint16_t*) (mem + Maddr) = (uint16_t) value;
+                    *(uint16_t*) (mem + maddr) = (uint16_t) value;
                     return;
                 case U32:
-                    *(uint32_t*) (mem + Maddr) = (uint32_t) value;
+                    *(uint32_t*) (mem + maddr) = (uint32_t) value;
                     return;
                 case F32:
-                    *(float*) (mem + Maddr) = (float) value;
+                    *(float*) (mem + maddr) = (float) value;
                     return;
                 case S8:
-                    *(int8_t*) (mem + Maddr) = (int8_t) value;
+                    *(int8_t*) (mem + maddr) = (int8_t) value;
                     return;
                 case S16:
-                    *(int16_t*) (mem + Maddr) = (int16_t) value;
+                    *(int16_t*) (mem + maddr) = (int16_t) value;
                     return;
                 case S32:
-                    *(int32_t*) (mem + Maddr) = (int32_t) value;
+                    *(int32_t*) (mem + maddr) = (int32_t) value;
                     return;
             }
         } else {  // from signaled integer
             int32_t value = *(int32_t*) &buffer;
-            switch (toTp) {
+            switch (to_tp) {
                 case U8:
-                    *(uint8_t*) (mem + Maddr) = (uint8_t) value;
+                    *(uint8_t*) (mem + maddr) = (uint8_t) value;
                     return;
                 case U16:
-                    *(uint16_t*) (mem + Maddr) = (uint16_t) value;
+                    *(uint16_t*) (mem + maddr) = (uint16_t) value;
                     return;
                 case U32:
-                    *(uint32_t*) (mem + Maddr) = (uint32_t) value;
+                    *(uint32_t*) (mem + maddr) = (uint32_t) value;
                     return;
                 case F32:
-                    *(float*) (mem + Maddr) = (float) value;
+                    *(float*) (mem + maddr) = (float) value;
                     return;
                 case S8:
-                    *(int8_t*) (mem + Maddr) = (int8_t) value;
+                    *(int8_t*) (mem + maddr) = (int8_t) value;
                     return;
                 case S16:
-                    *(int16_t*) (mem + Maddr) = (int16_t) value;
+                    *(int16_t*) (mem + maddr) = (int16_t) value;
                     return;
                 case S32:
-                    *(int32_t*) (mem + Maddr) = (int32_t) value;
+                    *(int32_t*) (mem + maddr) = (int32_t) value;
                     return;
             }
         }
     }
-    printf("ERROR VM::setMVal(): Invalid fromTp=%d, toTp=%d\n", fromTp, toTp);
+    printf("ERROR VM::setMVal(): Invalid fromTp=%d, toTp=%d\n", from_tp, to_tp);
 }
