@@ -22,6 +22,9 @@
 #include <string.h>
 #include <stdio.h>
 
+#define CEU_TREE_MAX 0xFF     // max prio for `tree´
+#define CEU_WCLOCK_NONE 0x7FFFFFFF
+
 typedef struct {
      int32_t togo; //
     uint16_t lbl;  //
@@ -65,6 +68,22 @@ typedef struct evt_data {
     uint8_t aux_id; //
       void* data;  //
 } evt_data_t;
+
+// ceu environment vars
+typedef struct prog_env {
+    uint16_t version;      //
+    uint16_t prog_start;   //
+    uint16_t prog_end;     //
+    uint16_t n_tracks;     //
+    uint16_t w_clocks;     //
+    uint16_t asyncs;       //
+    uint16_t w_clock0;     //
+    uint16_t gate0;        //
+    uint16_t in_evts;      //
+    uint16_t async0;       //
+    uint16_t app_size;     //
+     uint8_t persist_flag; //
+} prog_env_t;
 
 #define EVTQ_SIZE 10 //SHORT_QUEUES = 6
 enum {
@@ -146,7 +165,7 @@ enum {
     op_gt_f       = 34,  // greater
     op_lt_f       = 35,  // less
 
-    op_func       = 36,  // call function
+    op_func       = 36,  // call external function
     op_outevt_e   = 37,  // out event e
     op_outevt_z   = 38,  // out event z
     op_clken_e    = 39,  // ?
@@ -181,25 +200,9 @@ enum {
     op_tkins_max  = 136, // ? track insert
     op_push_v     = 144, // push to stack
     op_pop        = 160, // pop from stack
-    op_outEvt_v   = 176, // out event
+    op_outevt_v   = 176, // out event
     op_set_c      = 192, // set value in memory
 };
-
-// ceu environment vars
-typedef struct prog_env {
-    uint16_t version;     //
-    uint16_t prog_start;   //
-    uint16_t prog_end;     //
-    uint16_t n_tracks;     //
-    uint16_t w_clocks;     //
-    uint16_t asyncs;      //
-    uint16_t w_clock0;     //
-    uint16_t gate0;       //
-    uint16_t in_evts;      //
-    uint16_t async0;      //
-    uint16_t app_size;     //
-     uint8_t persist_flag; //
-} prog_env_t;
 
 // event id only for system error
 enum {
@@ -211,6 +214,11 @@ enum {
     E_IDXOVF   = 11, // array index overflow
     E_STKOVF   = 20, // stack overflow
     E_NOSETUP  = 21, // missing operation setup
+};
+
+enum {
+    Inactive = 0,
+    Init = 1,
 };
 
 ////////////////
@@ -255,15 +263,15 @@ static uint32_t vm_get_par32(uint8_t p_len);
 
 /////////////////////////////////////////
 
-extern void vm_evt_error(uint8_t v1);
-extern void vm_custom_reset(void);
-extern void vm_custom_call_function(uint8_t v);
-extern void vm_custom_proc_outevt(uint8_t v1, uint32_t v2);
-extern void vm_ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3);
-extern void vm_ceu_trigger(uint16_t v1, uint16_t v2);
-extern void vm_ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4);
-extern void vm_ceu_track_clr(uint16_t v1, uint16_t v2);
-extern void vm_ceu_async_enable(uint16_t v1, uint16_t v2);
+static void vm_evt_error(uint8_t v1);
+static void vm_reset(void);
+static void vm_call_function(uint8_t v);
+static void vm_proc_outevt(uint8_t v1, uint32_t v2);
+static void vm_wclock_enable(uint16_t gte, uint32_t us, uint16_t lbl);
+static void vm_trigger(uint16_t v1, uint8_t v2);
+static void vm_track_ins(int8_t v1, int8_t v2, int v3, uint16_t v4);
+static void vm_track_clr(uint16_t v1, uint16_t v2);
+static void vm_async_enable(uint16_t v1, uint16_t v2);
 
 /////////////////////////////////////////
 
@@ -539,16 +547,16 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             break;
         case op_func:
             v1u8 = vm_get_par8();
-            vm_custom_call_function(v1u8);
+            vm_call_function(v1u8);
             break;
         case op_outevt_e:
             v1u32 = vm_pop();
             v1u8  = vm_get_par8();
-            vm_custom_proc_outevt(v1u8, v1u32);
+            vm_proc_outevt(v1u8, v1u32);
             break;
         case op_outevt_z:
             v3u8 = vm_get_par8();
-            vm_custom_proc_outevt(v3u8, 0);
+            vm_proc_outevt(v3u8, 0);
             break;
         case op_clken_e:
             v1u32 = 0;
@@ -559,7 +567,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v1u16 = vm_get_par16(v1u8);
             v3u16 = vm_get_par16(v2u8);
             v1u32 = vm_pop();
-            vm_ceu_wclock_enable(v1u16, (int32_t) vm_unit2val(v1u32, v3u8), v3u16);
+            vm_wclock_enable(v1u16, (int32_t) vm_unit2val(v1u32, v3u8), v3u16);
             break;
         case op_clken_v:
             v1u32 = 0;
@@ -573,7 +581,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v2u16 = vm_get_par16(v2u8);
             v3u16 = vm_get_par16(v3u8);
             v1u32 = vm_get_mval(v2u16, v5u8);
-            vm_ceu_wclock_enable(v1u16, (int32_t) vm_unit2val(v1u32, v4u8), v3u16);
+            vm_wclock_enable(v1u16, (int32_t) vm_unit2val(v1u32, v4u8), v3u16);
             break;
         case op_clken_c:
             modifier = vm_get_par8();
@@ -583,7 +591,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v1u16 = vm_get_par16(v1u8);
             v1u32 = vm_get_par32(v2u8);
             v3u16 = vm_get_par16(v3u8);
-            vm_ceu_wclock_enable(v1u16, (int32_t) v1u32, v3u16);
+            vm_wclock_enable(v1u16, (int32_t) v1u32, v3u16);
             break;
         case op_set_v:
             modifier = vm_get_par8();
@@ -711,7 +719,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
         case op_trg:
             v1u8  = vm_get_bits_pow(modifier, 0, 0);
             v1u16 = vm_get_par16(v1u8);
-            vm_ceu_trigger(v1u16, 0);
+            vm_trigger(v1u16, 0);
             break;
         case op_exec:
             v1u8  = vm_get_bits_pow(modifier, 0, 0);
@@ -730,7 +738,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v3u8  = vm_get_bits(v4u8, 7, 7);
             v1u8  = vm_get_bits(v4u8, 0, 6);
             v3u16 = vm_get_par16(v2u8);
-            vm_ceu_track_ins(0, v1u8, v3u8, v3u16);
+            vm_track_ins(0, v1u8, v3u8, v3u16);
             break;
         case op_push_c:
             v1u8  = (uint8_t) (vm_get_bits(modifier, 0, 1) + 1);
@@ -763,12 +771,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v2u8  = vm_get_bits_pow(modifier, 0, 0);
             v1u16 = vm_get_par16(v1u8);
             v2u16 = vm_get_par16(v2u8);
-            memset((mem + v1u16), 0, v2u16); // does not work in TOSSIM
-            //{
-            //    int x;
-            //    for (x = 0; x < v2u16; x++)
-            //        *(uint8_t*) (MEM + v1u16 + x) = 0;
-            //}
+            memset((mem + v1u16), 0, v2u16);
             break;
         case op_ifelse:
             v1u8  = vm_get_bits_pow(modifier, 1, 1);
@@ -785,20 +788,20 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v2u8  = vm_get_bits_pow(modifier, 0, 0);
             v1u16 = vm_get_par16(v1u8);
             v3u16 = vm_get_par16(v2u8);
-            vm_ceu_async_enable(v1u16, v3u16);
+            vm_async_enable(v1u16, v3u16);
             break;
         case op_tkclr:
             v1u8  = vm_get_bits_pow(modifier, 1, 1);
             v2u8  = vm_get_bits_pow(modifier, 0, 0);
             v1u16 = vm_get_par16(v1u8);
             v2u16 = vm_get_par16(v2u8);
-            vm_ceu_track_clr(v1u16, v2u16);
+            vm_track_clr(v1u16, v2u16);
             break;
         case op_outevt_c:
             v1u8  = (uint8_t) (vm_get_bits(modifier, 0, 1) + 1);
             v3u8  = vm_get_par8();
             v1u32 = vm_get_par32(v1u8);
-            vm_custom_proc_outevt(v3u8, v1u32);
+            vm_proc_outevt(v3u8, v1u32);
             break;
         case op_getextdt_v:
             v1u8  = vm_get_bits_pow(modifier, 1, 1);
@@ -873,7 +876,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v2u8  = (uint8_t) (CEU->stack + vm_get_bits(modifier, 1, 2));
             v1u8  = vm_get_bits_pow(modifier, 0, 0);
             v3u16 = vm_get_par16(v1u8);
-            vm_ceu_track_ins(v2u8, 255, 0, v3u16);
+            vm_track_ins(v2u8, 255, 0, v3u16);
             break;
         case op_push_v:
             v1u8  = vm_get_bits_pow(modifier, 3, 3);
@@ -891,7 +894,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v1u16 = vm_get_par16(v1u8);
             if (v4u8 == F32) {
                 v1f = vm_pop_f();
-                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
+                //vm_set_mval(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
                 vm_set_mval(v1u32, v1u16, F32, v4u8);
             } else {
@@ -899,11 +902,11 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
                 vm_set_mval(v1u32, v1u16, S32, v4u8);
             }
             break;
-        case op_outEvt_v:
+        case op_outevt_v:
             v2u8  = vm_get_bits_pow(modifier, 3, 3);
             v3u8  = vm_get_par8();
             v1u16 = vm_get_par16(v2u8);
-            vm_custom_proc_outevt(v3u8, v1u16);
+            vm_proc_outevt(v3u8, v1u16);
             break;
         case op_set_c:
             v4u8  = vm_get_bits(modifier, 0, 2);
@@ -915,7 +918,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             if (v4u8 == F32) {
                 //v1f = *(float*) &v1u32;
                 //vm_set_mval(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
-                memcpy(&v1f, &v1u32, sizeof(uint32_t)); //TODO: revisar, doble conversion
+                memcpy(&v1f, &v1u32, sizeof(uint32_t)); //TODO: check, double conversion
                 memcpy(&v2u32, &v1f, sizeof(float));
                 vm_set_mval(v2u32, v1u16, F32, v4u8);
 
@@ -925,10 +928,6 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             break;
     }
 }
-
-//////////////// internal /////////////////
-
-
 
 /////////////////// aux ///////////////////
 
@@ -1034,7 +1033,7 @@ static void vm_push(uint32_t value) {
         vm_evt_error(E_STKOVF);
         // stop VM execution to prEVENT unexpected state
         halted_flag = true;
-        vm_custom_reset();
+        vm_reset();
     }
 }
 
@@ -1047,7 +1046,7 @@ static void vm_push_f(float value) {
         vm_evt_error(E_STKOVF);
         // stop VM execution to prEVENT unexpected state
         halted_flag = true;
-        vm_custom_reset();
+        vm_reset();
     }
 }
 
@@ -1171,4 +1170,166 @@ static void vm_set_mval(uint32_t buffer, uint16_t maddr, uint8_t from_tp, uint8_
         }
     }
     printf("ERROR VM::vm_set_mval(): invalid from_tp=%d, to_tp=%d\n", from_tp, to_tp);
+}
+
+//////////////////////////////////////////
+
+static int _track_cmp(tceu_trk* trk1, tceu_trk* trk2) {
+    printf("CEU::ceu_track_cmp():: trk1->lbl=%d,stack=%d trk2->lbl=%d,stack=%d -- CEU->stack=%d\n", trk1->lbl, trk1->stack, trk2->lbl, trk2->stack, CEU->stack);
+
+    if (trk1->stack != trk2->stack) {
+        if (trk1->stack == CEU->stack)
+            return 1;
+        if (trk2->stack == CEU->stack)
+            return 0;
+        return (trk1->stack > trk2->stack);
+    }
+    return (trk1->tree > trk2->tree);
+}
+
+static void vm_track_ins(int8_t stack, int8_t tree, int chk, uint16_t lbl) {
+    printf("CEU::ceu_track_ins():: track_n=%d, stack=%d tree=%d chk=%d lbl=%d\n", CEU->tracks_n, stack, tree, chk, lbl);
+    int i;
+    if (chk) {
+        for (i = 1; i <= CEU->tracks_n; i++) {
+            if (lbl == (CEU->p_tracks + i)->lbl) {
+                return;
+            }
+        }
+    }
+    tceu_trk trk;
+    trk.stack = stack;
+    trk.tree = tree;
+    trk.lbl = lbl;
+
+    for (i = ++CEU->tracks_n; (i > 1) && _track_cmp(&trk, CEU->p_tracks + (i / 2)); i /= 2) {
+        memcpy(CEU->p_tracks + i, CEU->p_tracks + (i / 2), sizeof(tceu_trk));
+    }
+
+    *(tceu_trk*) (CEU->p_tracks + i) = trk;
+}
+
+static void vm_evt_error(uint8_t v1) {
+    printf("evt_error %d\n", v1);
+}
+
+//
+static void vm_reset(void) {
+    printf("vm_custom_reset\n");
+}
+
+//
+static void vm_call_function(uint8_t v) {
+    printf("vm_custom_call_function %d\n", v);
+}
+
+//
+static void vm_proc_outevt(uint8_t v1, uint32_t v2) {
+    printf("vm_custom_proc_outevt %d, %d\n", v1, v2);
+}
+
+//////////////////
+static void _out_wclock(uint32_t ms){
+    if (ms != CEU_WCLOCK_NONE ) {
+        //BSTimerVM.startOneShot(ms); TODO: BSTimerVM
+    }
+}
+static int _wclock_lt (tceu_wclock* tmr) {
+    printf("CEU::_wclock_lt(): wclk_cur=%d, togo=%d, cur.togo=%d\n",(CEU->wclk_cur)?CEU->wclk_cur->togo:0,(uint32_t)tmr->togo,(CEU->wclk_cur)?(uint32_t)CEU->wclk_cur->togo:5555);
+    if (!CEU->wclk_cur || (!CEU->wclk_cur || CEU->wclk_cur->togo == 0) || (!CEU->wclk_cur || tmr->togo < CEU->wclk_cur->togo)) {
+        CEU->wclk_cur = tmr;
+        return 1;
+     }
+    return 0;
+}
+static void vm_wclock_enable(uint16_t gte, uint32_t us, uint16_t lbl) {
+    tceu_wclock* tmr = (tceu_wclock*) (mem + env_data.w_clock0 + (gte * sizeof(tceu_wclock)));
+    uint32_t dt = us - CEU->wclk_late;
+    dt = (dt < 0) ? 0 : dt;
+
+    printf("CEU::vm_wclock_enable(): gate=%d, time=%d, lbl=%d, dt=%d, wClock0=%d\n", gte, us, lbl, dt, env_data.w_clock0);
+    tmr->togo = dt;
+    *(uint16_t*) &(tmr->lbl) = lbl;
+
+    if (_wclock_lt(tmr))
+        _out_wclock(dt);
+}
+//////////////////
+
+//////////////////
+static void _spawn (uint16_t* lbl)
+{
+    if (*(uint16_t*)lbl != Inactive) {
+        vm_track_ins(CEU->stack, CEU_TREE_MAX, 0, *lbl);
+        *(uint16_t*)lbl = Inactive;
+    }
+}
+static void vm_trigger(uint16_t off, uint8_t auxId) {
+    printf("ceu_trigger %d, %d\n", off, auxId);
+    int i;
+    uint8_t slotSize, slotAuxId;
+    int n = *(char*) (CEU->p_mem + off) & 0x7f;
+    slotSize = (*(char*) (CEU->p_mem + off) & 0x80) ? 3 : 2;
+    printf("CEU::ceu_trigger(): evtId=%d, auxId=%d, slotSize=%d, gate addr=%d, nGates=%d\n", *(char*) (CEU->p_mem + off - 1), auxId, slotSize, off, n);
+    for (i = 0; i < n; i++) {
+        if (slotSize == 2) { // doesn't test auxId
+            _spawn((uint16_t*) (CEU->p_mem + off + 1 + (i * slotSize)));
+        } else { // must test auxId
+            slotAuxId = *(char*) (CEU->p_mem + off + 1 + (i * slotSize));
+            printf("CEU::ceu_trigger(): testauxId -> slotAuxId=%d, auxId=%d\n", slotAuxId, auxId);
+            if (slotAuxId == auxId) {
+                _spawn((uint16_t*) (CEU->p_mem + off + 2 + (i * slotSize)));
+            }
+        }
+    }
+}
+//////////////////
+
+//////////////////
+static int _track_rem(tceu_trk* trk, uint8_t N) {
+    printf("CEU::ceu_track_rem: track_n=%d\n", CEU->tracks_n);
+    if (CEU->tracks_n == 0)
+        return 0;
+
+    int i, cur;
+    tceu_trk* last;
+
+    if (trk)
+        memcpy(trk, CEU->p_tracks + N, sizeof(tceu_trk));
+
+    last = CEU->p_tracks + CEU->tracks_n--;
+    for (i = N; i * 2 <= CEU->tracks_n; i = cur) {
+        cur = i * 2;
+        if (cur != CEU->tracks_n && _track_cmp(CEU->p_tracks + (cur + 1), CEU->p_tracks + cur))
+            cur++;
+        if (_track_cmp(CEU->p_tracks + cur, last))
+            memcpy(CEU->p_tracks + i, CEU->p_tracks + cur, sizeof(tceu_trk));
+        else
+            break;
+    }
+    memcpy(CEU->p_tracks + i, last, sizeof(tceu_trk));
+    return 1;
+
+}
+static void vm_track_clr(uint16_t l1, uint16_t l2) {
+    printf("ceu_track_clr %d, %d\n", l1, l2);
+    int i;
+    for (i = 1; i <= CEU->tracks_n; i++) {
+        tceu_trk* trk = CEU->p_tracks + i;
+        if (trk->lbl >= l1 && trk->lbl <= l2) {
+            _track_rem(NULL, i);
+            i--;
+        }
+    }
+}
+//////////////////
+
+//
+static void vm_async_enable(uint16_t v1, uint16_t v2) {
+    printf("ceu_async_enable %d, %d\n", v1, v2);
+    /*
+    PTR(tceu_nlbl*,envData.async0)[gte] = lbl;
+    if (!call BSTimerAsync.isRunning())
+        BSTimerAsync.startOneShot(ASYNC_DELAY);
+    */
 }
