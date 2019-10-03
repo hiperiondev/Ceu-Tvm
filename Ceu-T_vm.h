@@ -185,7 +185,7 @@ enum {
     op_set_c      = 192, // set value in memory
 };
 
-// Ceu environment vars
+// ceu environment vars
 typedef struct prog_env {
     uint16_t version;     //
     uint16_t prog_start;   //
@@ -201,28 +201,28 @@ typedef struct prog_env {
      uint8_t persist_flag; //
 } prog_env_t;
 
-// event id only for system error (from VMCustom*.h)
+// event id only for system error
 enum {
     I_ERROR_ID = 0,  //
     I_ERROR    = 1,  //
 
 // vm error codes
-    E_DIVZERO  = 10, // Division by zero
-    E_IDXOVF   = 11, // Array index overflow
-    E_STKOVF   = 20, // Stack overflow
-    E_NOSETUP  = 21, // Missing operation setup
+    E_DIVZERO  = 10, // division by zero
+    E_IDXOVF   = 11, // array index overflow
+    E_STKOVF   = 20, // stack overflow
+    E_NOSETUP  = 21, // missing operation setup
 };
 
 ////////////////
 
 #define MEMORY_SIZE 4840 // BLOCK_SIZE=22 * CURRENT_MAX_BLOCKS=220
-// Ceu environment vars
+// ceu environment vars
       bool halted_flag = true;             // vm halted flag
       bool proc_flag = false;              // vm processing flag
-   uint8_t *mem;                          // internal memory
-   uint8_t ext_data_sys_error;               // last system error code
-   uint8_t ceu_data[MEMORY_SIZE];         // Ceu data room for 'tracks', 'mem', 'prog', and 'stack'
-  uint16_t pc;                            // program counter
+   uint8_t *mem;                           // internal memory
+   uint8_t ext_data_sys_error;             // last system error code
+   uint8_t ceu_data[MEMORY_SIZE];          // ceu data room for 'tracks', 'mem', 'prog', and 'stack'
+  uint16_t pc;                             // program counter
   uint16_t curr_stack = (MEMORY_SIZE) - 5; // stack control
 prog_env_t env_data; //
 
@@ -236,16 +236,9 @@ static const uint8_t is_mask[] = {
         0x3f, 0x3f, 0x3f, 0x3f,
         0x3f, 0x3f, 0x3f, 0x3f,
 };
+
 /////////////////////////////////////////
-    static void vm_evt_error(uint8_t v1);
-    static void vm_custom_reset(void);
-    static void vm_custom_call_function(uint8_t v);
-    static void vm_custom_proc_outevt(uint8_t v1, uint32_t v2);
-    static void vm_ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3);
-    static void vm_ceu_trigger(uint16_t v1, uint16_t v2);
-    static void vm_ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4);
-    static void vm_ceu_track_clr(uint16_t v1, uint16_t v2);
-    static void vm_ceu_async_enable(uint16_t v1, uint16_t v2);
+
     static void vm_push(uint32_t value);
     static void vm_push_f(float value);
     static void vm_set_mval(uint32_t buffer, uint16_t maddr, uint8_t from_tp, uint8_t to_tp);
@@ -259,6 +252,19 @@ static uint32_t vm_unit2val(uint32_t val, uint8_t unit);
 static uint32_t vm_pop();
 static uint32_t vm_get_mval(uint16_t maddr, uint8_t type);
 static uint32_t vm_get_par32(uint8_t p_len);
+
+/////////////////////////////////////////
+
+extern void vm_evt_error(uint8_t v1);
+extern void vm_custom_reset(void);
+extern void vm_custom_call_function(uint8_t v);
+extern void vm_custom_proc_outevt(uint8_t v1, uint32_t v2);
+extern void vm_ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3);
+extern void vm_ceu_trigger(uint16_t v1, uint16_t v2);
+extern void vm_ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4);
+extern void vm_ceu_track_clr(uint16_t v1, uint16_t v2);
+extern void vm_ceu_async_enable(uint16_t v1, uint16_t v2);
+
 /////////////////////////////////////////
 
 // for test
@@ -341,7 +347,6 @@ uint8_t vm_init() {
     CEU->p_tracks = (tceu_trk*) ceu_data + 0;
     CEU->p_mem = ceu_data + ((env_data.n_tracks + 1) * sizeof(tceu_trk));
     mem = CEU->p_mem;
-
     return 0;
 }
 
@@ -590,7 +595,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v2u16 = vm_get_par16(v2u8);
             if (v5u8 == F32) {         // Source is a float
                 v1f = vm_get_mval_f(v2u16);
-                //setMVal(*(uint32_t*) &v1f, v1u16, v5u8, v4u8); //type-punning error
+                //vm_set_mval(*(uint32_t*) &v1f, v1u16, v5u8, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
                 vm_set_mval(v1u32, v1u16, v5u8, v4u8);
             } else {                 // Source is an integer
@@ -617,7 +622,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             else {
                 if (v4u8 == F32) {
                     v1f = (float) v1u32;
-                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8); //type-punning error
+                    //vm_set_mval(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
                     vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
                 } else {
@@ -645,7 +650,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             else {
                 if (v9u9 == F32) {         // Source is a float
                     v1f = vm_get_mval_f(v2u16);
-                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8); //type-punning error
+                    //vm_set_mval(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
                     vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
                 } else {                 // Source is an integer
@@ -670,7 +675,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             else {
                 if (v4u8 == F32) { // Source/Target are float
                     v1f = vm_pop_f();
-                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8); //type-punning error
+                    //vm_set_mval(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
                     vm_set_mval(v1u32, v1u16 + ((vm_get_mval(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
                 } else { // Source/Target are integer
@@ -758,7 +763,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v2u8  = vm_get_bits_pow(modifier, 0, 0);
             v1u16 = vm_get_par16(v1u8);
             v2u16 = vm_get_par16(v2u8);
-            memset((mem+v1u16),0,v2u16); // does not work in TOSSIM
+            memset((mem + v1u16), 0, v2u16); // does not work in TOSSIM
             //{
             //    int x;
             //    for (x = 0; x < v2u16; x++)
@@ -820,7 +825,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v1u16 = (uint16_t) vm_pop();
             if (v4u8 == F32) {
                 v1f = vm_pop_f();
-                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
+                //vm_set_mval(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
                 vm_set_mval(v1u32, v1u16, F32, v4u8);
             } else {
@@ -909,7 +914,7 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
             v1u32 = vm_get_par32(v2u8);
             if (v4u8 == F32) {
                 //v1f = *(float*) &v1u32;
-                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
+                //vm_set_mval(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1f, &v1u32, sizeof(uint32_t)); //TODO: revisar, doble conversion
                 memcpy(&v2u32, &v1f, sizeof(float));
                 vm_set_mval(v2u32, v1u16, F32, v4u8);
@@ -923,53 +928,11 @@ void decode_opcode(uint8_t opcode, uint8_t modifier) {
 
 //////////////// internal /////////////////
 
-static void vm_evt_error(uint8_t v1) {
-    printf("evt_error %d\n", v1);
-}
 
-//
-static void vm_custom_reset(void) {
-    printf("vm_custom_reset\n");
-}
-
-//
-static void vm_custom_call_function(uint8_t v) {
-    printf("vm_custom_call_function %d\n", v);
-}
-
-//
-static void vm_custom_proc_outevt(uint8_t v1, uint32_t v2) {
-    printf("vm_custom_proc_outevt %d, %d\n", v1, v2);
-}
-
-//
-static void vm_ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3) {
-    printf("ceu_wclock_enable %d, %d, %d\n", v1, v2, v3);
-}
-
-//
-static void vm_ceu_trigger(uint16_t v1, uint16_t v2) {
-    printf("ceu_trigger %d, %d\n", v1, v2);
-}
-
-//
-static void vm_ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4) {
-    printf("ceu_track_ins %d, %d, %d, %d\n", v1, v2, v3, v4);
-}
-
-//
-static void vm_ceu_track_clr(uint16_t v1, uint16_t v2) {
-    printf("ceu_track_clr %d, %d\n", v1, v2);
-}
-
-//
-static void vm_ceu_async_enable(uint16_t v1, uint16_t v2) {
-    printf("ceu_async_enable %d, %d\n", v1, v2);
-}
 
 /////////////////// aux ///////////////////
 
-// Get constant values from program memory. Convert big-endian to the local type endian.
+// get constant values from program memory. convert big-endian to the local type endian.
 
 // get byte
 static uint8_t vm_get_par8(void) {
@@ -1116,7 +1079,7 @@ static uint32_t vm_get_mval(uint16_t maddr, uint8_t type) {
         case S32:
             return (uint32_t) *(int32_t*) (mem + maddr);
     }
-    printf("ERROR VM::getMVal(): Invalid type=%d\n", type);
+    printf("ERROR VM::vm_get_mval(): invalid type=%d\n", type);
     return 0;
 }
 
@@ -1207,5 +1170,5 @@ static void vm_set_mval(uint32_t buffer, uint16_t maddr, uint8_t from_tp, uint8_
             }
         }
     }
-    printf("ERROR VM::setMVal(): Invalid fromTp=%d, toTp=%d\n", from_tp, to_tp);
+    printf("ERROR VM::vm_set_mval(): invalid from_tp=%d, to_tp=%d\n", from_tp, to_tp);
 }
