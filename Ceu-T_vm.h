@@ -35,7 +35,7 @@ typedef struct {
 } tceu;
 
 #define CEU (&CEU_)
-#define CEU_STACK_MIN 0x01 // min prio for `stack´
+#define CEU_STACK_MIN 0x01 // min prio for 'stack'
 tceu CEU_ = {
         0,                 // tracks_n
         CEU_STACK_MIN,     // stack
@@ -48,18 +48,18 @@ tceu CEU_ = {
         (void*) 0          // p_mem
         };
 
-// VM input event structure
-typedef struct evtData {
-    uint8_t evtId; //
-    uint8_t auxId; //
+// vm input event structure
+typedef struct evt_data {
+    uint8_t evt_id; //
+    uint8_t aux_id; //
       void* data;  //
-} evtData_t;
+} evt_data_t;
 
 #define EVTQ_SIZE 10 //SHORT_QUEUES = 6
 enum {
     EVT_QUEUE_SIZE = EVTQ_SIZE, //
 
-    // Ctl section pointers
+    // ctrl section pointers
     DEFAULT_VARS   = 0,  //
     STRUC_DEF      = 2,  //
     VAR_SPACE      = 4,  //
@@ -73,7 +73,7 @@ enum {
     MOTE_ID        = 20, //
     RESULT         = 22, //
 
-    // Var Types
+    // var types
     U8  = 0, //
     U16 = 1, //
     U32 = 2, //
@@ -82,18 +82,20 @@ enum {
     S16 = 5, //
     S32 = 6, //
 
-    // Generic var type
+    // generic var type
     x8  = 0, //
     x16 = 1, //
     x32 = 2, //
 
-    // Cast modes
+    // cast modes
     U32_F = 0, //
     S32_F = 1, //
     F_U32 = 2, //
     F_S32 = 3, //
+};
 
-    // OpCodes uint8
+enum {
+    // opcodes uint8
     op_nop        = 0,   // not operation
     op_end        = 1,   // ? not operation
     op_bnot       = 2,   // binary not
@@ -120,7 +122,7 @@ enum {
 
     op_popx       = 23,  // pop from stack (uint32)
 
-    // OpCodes float
+    // opcodes float
     op_neg_f      = 25,  // negate
     op_sub_f      = 26,  // subtract
     op_add_f      = 27,  // add
@@ -133,9 +135,8 @@ enum {
     op_gt_f       = 34,  // greater
     op_lt_f       = 35,  // less
 
-
     op_func       = 36,  // call function
-    op_outEvt_e   = 37,  // out event e
+    op_outevt_e   = 37,  // out event e
     op_outevt_z   = 38,  // out event z
     op_clken_e    = 39,  // ?
     op_clken_v    = 40,  // ?
@@ -154,11 +155,11 @@ enum {
 
     op_push_c     = 64,  // push to stack (uint32)
     op_cast       = 68,  // cast top of stack
-    op_memclr     = 72,  // set mem to 0
+    op_memclr     = 72,  // set memory to 0
     op_ifelse     = 76,  // if else on top stack
-    op_asen       = 80,  // ? async enable
+    op_asen       = 80,  // ? asynchronous enable
     op_tkclr      = 84,  // ? track clear
-    op_outEvt_c   = 88,  // out event
+    op_outevt_c   = 88,  // out event
     op_getextdt_v = 92,  // get from external memory
     op_inc        = 96,  // increment memory
     op_dec        = 100, // decrement memory
@@ -166,36 +167,35 @@ enum {
     op_deref      = 112, // push to stack memory value
     op_memcpy     = 120, // memory copy
 
-    op_tkins_max  = 136, // ?track insert
+    op_tkins_max  = 136, // ? track insert
     op_push_v     = 144, // push to stack
     op_pop        = 160, // pop from stack
     op_outEvt_v   = 176, // out event
     op_set_c      = 192, // set value in memory
-
 };
 
-// Ceu Environment vars
-typedef struct progEnv {
-    uint16_t Version;     //
-    uint16_t ProgStart;   //
-    uint16_t ProgEnd;     //
-    uint16_t nTracks;     //
-    uint16_t wClocks;     //
+// Ceu environment vars
+typedef struct prog_env {
+    uint16_t version;     //
+    uint16_t prog_start;   //
+    uint16_t prog_end;     //
+    uint16_t n_tracks;     //
+    uint16_t w_clocks;     //
     uint16_t asyncs;      //
-    uint16_t wClock0;     //
+    uint16_t w_clock0;     //
     uint16_t gate0;       //
-    uint16_t inEvts;      //
+    uint16_t in_evts;      //
     uint16_t async0;      //
-    uint16_t appSize;     //
-     uint8_t persistFlag; //
-} progEnv_t;
+    uint16_t app_size;     //
+     uint8_t persist_flag; //
+} prog_env_t;
 
-// Event ID only for System Error (from VMCustom*.h)
+// event id only for system error (from VMCustom*.h)
 enum {
     I_ERROR_ID = 0,  //
     I_ERROR    = 1,  //
 
-// VM Error codes
+// vm error codes
     E_DIVZERO  = 10, // Division by zero
     E_IDXOVF   = 11, // Array index overflow
     E_STKOVF   = 20, // Stack overflow
@@ -204,54 +204,156 @@ enum {
 
 ////////////////
 
-#define STACK_SIZE 4840 // BLOCK_SIZE=22 * CURRENT_MAX_BLOCKS=220
+#define MEMORY_SIZE 4840 // BLOCK_SIZE=22 * CURRENT_MAX_BLOCKS=220
+// Ceu environment vars
+      bool halted_flag = true;             // vm halted flag
+      bool proc_flag = false;              // vm processing flag
+   uint8_t *mem;                          // internal memory
+   uint8_t ext_data_sys_error;               // last system error code
+   uint8_t ceu_data[MEMORY_SIZE];         // Ceu data room for 'tracks', 'mem', 'prog', and 'stack'
+  uint16_t pc;                            // program counter
+  uint16_t curr_stack = (MEMORY_SIZE) - 5; // stack control
+prog_env_t env_data; //
 
-// Ceu Environment vars
-     bool haltedFlag = true;            // vm halted flag
-     bool procFlag = false;             // vm processing flag
-  uint8_t *MEM;                         // internal memory
-  uint8_t ExtDataSysError;              // last system error code
-  uint8_t CEU_data[STACK_SIZE];         // Ceu data room for 'tracks', 'mem', 'Prog', and 'Stack'
- uint16_t PC;                           // program counter
- uint16_t currStack = (STACK_SIZE) - 5; // stack control
-progEnv_t envData; //
-
+static const uint8_t is_mask[] = {
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x01, 0x01,
+        0x03, 0x03, 0x03, 0x03,
+        0x03, 0x07, 0x07, 0x07,
+        0x07, 0x07, 0x0f, 0x0f,
+        0x0f, 0x0f, 0x0f, 0x0f,
+        0x3f, 0x3f, 0x3f, 0x3f,
+        0x3f, 0x3f, 0x3f, 0x3f,
+};
 /////////////////////////////////////////
-void evtError(uint8_t v1);
-void VMCustom_reset(void);
-void VMCustom_callFunction(uint8_t v);
-void VMCustom_procOutEvt(uint8_t v1, uint32_t v2);
-void ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3);
-void ceu_trigger(uint16_t v1, uint16_t v2);
-void ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4);
-void ceu_track_clr(uint16_t v1, uint16_t v2);
-void ceu_async_enable(uint16_t v1, uint16_t v2);
-void push(uint32_t value);
-void pushf(float value);
-void setMVal(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp);
-
-uint8_t getPar8(uint8_t p_len);
-uint8_t getBits(uint8_t data, uint8_t stBit, uint8_t endBit);
-uint8_t getBitsPow(uint8_t data, uint8_t stBit, uint8_t endBit);
-
-uint16_t getPar16(uint8_t p_len);
-
+    void evt_error(uint8_t v1);
+    void vm_custom_reset(void);
+    void vm_custom_call_function(uint8_t v);
+    void vm_custom_proc_outevt(uint8_t v1, uint32_t v2);
+    void ceu_wclock_enable(uint16_t v1, int32_t v2, uint16_t v3);
+    void ceu_trigger(uint16_t v1, uint16_t v2);
+    void ceu_track_ins(int8_t v1, int8_t v2, int8_t v3, uint16_t v4);
+    void ceu_track_clr(uint16_t v1, uint16_t v2);
+    void ceu_async_enable(uint16_t v1, uint16_t v2);
+    void push(uint32_t value);
+    void push_f(float value);
+    void set_mval(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp);
+   float popf();
+   float get_mval_f(uint16_t Maddr);
+ uint8_t get_par8(uint8_t p_len);
+ uint8_t get_bits(uint8_t data, uint8_t stBit, uint8_t endBit);
+ uint8_t get_bits_pow(uint8_t data, uint8_t stBit, uint8_t endBit);
+uint16_t get_par16(uint8_t p_len);
 uint32_t unit2val(uint32_t val, uint8_t unit);
 uint32_t pop();
-uint32_t getMVal(uint16_t Maddr, uint8_t type);
-uint32_t getPar32(uint8_t p_len);
-
-float popf();
-float getMValf(uint16_t Maddr);
+uint32_t get_mval(uint16_t Maddr, uint8_t type);
+uint32_t get_par32(uint8_t p_len);
 /////////////////////////////////////////
 
-void Decoder(uint8_t Opcode, uint8_t Modifier) {
+// for test
+static char op_str[255][16];
+static void op_to_str(){
+    strcpy  (op_str[0], "op_nop");
+    strcpy  (op_str[1], "op_end");
+    strcpy  (op_str[2], "op_bnot");
+    strcpy  (op_str[3], "op_lnot");
+    strcpy  (op_str[4], "op_neg");
+    strcpy  (op_str[5], "op_sub");
+    strcpy  (op_str[6], "op_add");
+    strcpy  (op_str[7], "op_mod");
+    strcpy  (op_str[8], "op_mult");
+    strcpy  (op_str[9], "op_div");
+    strcpy (op_str[10], "op_bor");
+    strcpy (op_str[11], "op_band");
+    strcpy (op_str[12], "op_lshft");
+    strcpy (op_str[13], "op_rshft");
+    strcpy (op_str[14], "op_bxor");
+    strcpy (op_str[15], "op_eq");
+    strcpy (op_str[16], "op_neq");
+    strcpy (op_str[17], "op_gte");
+    strcpy (op_str[18], "op_lte");
+    strcpy (op_str[19], "op_gt");
+    strcpy (op_str[20], "op_lt");
+    strcpy (op_str[21], "op_lor");
+    strcpy (op_str[22], "op_land");
+    strcpy (op_str[23], "op_popx");
+    strcpy (op_str[25], "op_neg_f");
+    strcpy (op_str[26], "op_sub_f");
+    strcpy (op_str[27], "op_add_f");
+    strcpy (op_str[28], "op_mult_f");
+    strcpy (op_str[29], "op_div_f");
+    strcpy (op_str[30], "op_eq_f");
+    strcpy (op_str[31], "op_neq_f");
+    strcpy (op_str[32], "op_gte_f");
+    strcpy (op_str[33], "op_lte_f");
+    strcpy (op_str[34], "op_gt_f");
+    strcpy (op_str[35], "op_lt_f");
+    strcpy (op_str[36], "op_func");
+    strcpy (op_str[37], "op_outevt_e");
+    strcpy (op_str[38], "op_outevt_z");
+    strcpy (op_str[39], "op_clken_e");
+    strcpy (op_str[40], "op_clken_v");
+    strcpy (op_str[41], "op_clken_c");
+    strcpy (op_str[42], "op_set_v");
+    strcpy (op_str[43], "op_setarr_vc");
+    strcpy (op_str[44], "op_setarr_vv");
+    strcpy (op_str[48], "op_poparr_v");
+    strcpy (op_str[50], "op_pusharr_v");
+    strcpy (op_str[52], "op_getextdt_e");
+    strcpy (op_str[54], "op_trg");
+    strcpy (op_str[56], "op_exec");
+    strcpy (op_str[58], "op_chkret");
+    strcpy (op_str[60], "op_tkins_z");
+    strcpy (op_str[64], "op_push_c");
+    strcpy (op_str[68], "op_cast");
+    strcpy (op_str[72], "op_memclr");
+    strcpy (op_str[76], "op_ifelse");
+    strcpy (op_str[80], "op_asen");
+    strcpy (op_str[84], "op_tkclr");
+    strcpy (op_str[88], "op_outevt_c");
+    strcpy (op_str[92], "op_getextdt_v");
+    strcpy (op_str[96], "op_inc");
+    strcpy(op_str[100], "op_dec");
+    strcpy(op_str[104], "op_set_e");
+    strcpy(op_str[112], "op_deref");
+    strcpy(op_str[120], "op_memcpy");
+    strcpy(op_str[136], "op_tkins_max");
+    strcpy(op_str[144], "op_push_v");
+    strcpy(op_str[160], "op_pop");
+    strcpy(op_str[176], "op_outEvt_v");
+    strcpy(op_str[192], "op_set_c");
+}
+//
+
+uint8_t vm_init() {
+    op_to_str();
+    CEU->p_tracks = (tceu_trk*) ceu_data + 0;
+    CEU->p_mem = ceu_data + ((env_data.n_tracks + 1) * sizeof(tceu_trk));
+    mem = CEU->p_mem;
+
+    return 0;
+}
+
+uint8_t get_opcode(uint8_t* opcode, uint8_t* modifier) {
+    uint8_t temp_opc;
+    temp_opc = (uint8_t) (ceu_data[pc]);
+    printf("VM::getOpCode(): CEU_data[%d]=%d (0x%02x)  %s \n", pc, temp_opc, temp_opc, (temp_opc == op_end) ? "--> f_end" : "");
+    pc++;
+    *modifier = (uint8_t) (temp_opc & is_mask[(temp_opc >> 3)]);
+    *opcode = (uint8_t) (temp_opc & ~is_mask[(temp_opc >> 3)]);
+    return (*opcode);
+}
+
+void decode_opcode(uint8_t opcode, uint8_t modifier) {
+       float v1f, v2f;
      uint8_t v1u8, v2u8, v3u8, v4u8, v5u8, v6u8, v7u8, v8u8, v9u9;
     uint16_t v1u16, v2u16, v3u16, v4u16;
     uint32_t v1u32, v2u32;
-       float v1f, v2f;
 
-    switch (Opcode) {
+    op_to_str();
+    printf("%d: %s %d\n", opcode, op_str[opcode], modifier);
+
+    switch (opcode) {
         case op_nop:
             break;
         case op_end:
@@ -283,7 +385,7 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             v2u8 = pop();
             push((v2u8 == 0) ? 0 : v1u8 % v2u8);
             if (v2u8 == 0)
-                evtError(E_DIVZERO);
+                evt_error(E_DIVZERO);
             break;
         case op_mult:
             v1u8 = pop();
@@ -295,7 +397,7 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             v2u8 = pop();
             push((v2u8 == 0) ? 0 : v1u8 / v2u8);
             if (v2u8 == 0)
-                evtError(E_DIVZERO);
+                evt_error(E_DIVZERO);
             break;
         case op_bor:
             v1u8 = pop();
@@ -368,27 +470,27 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
         case op_neg_f:
             v1f = popf();
             v1f = -1 * v1f;
-            pushf(v1f);
+            push_f(v1f);
             break;
         case op_sub_f:
             v1f = popf();
             v2f = popf();
-            pushf(v1f - v2f);
+            push_f(v1f - v2f);
             break;
         case op_add_f:
             v1f = popf();
             v2f = popf();
-            pushf(v1f + v2f);
+            push_f(v1f + v2f);
             break;
         case op_mult_f:
             v1f = popf();
             v2f = popf();
-            pushf(v1f * v2f);
+            push_f(v1f * v2f);
             break;
         case op_div_f:
             v1f = popf();
             v2f = popf();
-            pushf(v1f / v2f);
+            push_f(v1f / v2f);
             break;
         case op_eq_f:
             v1f = popf();
@@ -421,229 +523,215 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             push(v1f < v2f);
             break;
         case op_func:
-            v1u8 = getPar8(1);
-            VMCustom_callFunction(v1u8);
+            v1u8 = get_par8(1);
+            vm_custom_call_function(v1u8);
             break;
-        case op_outEvt_e:
+        case op_outevt_e:
             v1u32 = pop();
-            v1u8  = getPar8(1);
-            VMCustom_procOutEvt(v1u8, v1u32);
+            v1u8  = get_par8(1);
+            vm_custom_proc_outevt(v1u8, v1u32);
             break;
         case op_outevt_z:
-            v3u8 = getPar8(1);
-            VMCustom_procOutEvt(v3u8, 0);
+            v3u8 = get_par8(1);
+            vm_custom_proc_outevt(v3u8, 0);
             break;
         case op_clken_e:
             v1u32 = 0;
-            Modifier = getPar8(1);
-            v1u8  = getBitsPow(Modifier, 1, 1);
-            v2u8  = getBitsPow(Modifier, 0, 0);
-            v3u8  = getBits(Modifier, 4, 6);
-            v1u16 = getPar16(v1u8);
-            v3u16 = getPar16(v2u8);
+            modifier = get_par8(1);
+            v1u8  = get_bits_pow(modifier, 1, 1);
+            v2u8  = get_bits_pow(modifier, 0, 0);
+            v3u8  = get_bits(modifier, 4, 6);
+            v1u16 = get_par16(v1u8);
+            v3u16 = get_par16(v2u8);
             v1u32 = pop();
             ceu_wclock_enable(v1u16, (int32_t) unit2val(v1u32, v3u8), v3u16);
             break;
         case op_clken_v:
             v1u32 = 0;
-            Modifier = getPar8(1);
-            v4u8  = getBits(Modifier, 5, 7);
-            v5u8  = getBits(Modifier, 3, 4); // Expect type with 2 bits -- only unsigned integer
-            v1u8  = getBitsPow(Modifier, 2, 2);
-            v2u8  = getBitsPow(Modifier, 1, 1);
-            v3u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            v2u16 = getPar16(v2u8);
-            v3u16 = getPar16(v3u8);
-            v1u32 = getMVal(v2u16, v5u8);
+            modifier = get_par8(1);
+            v4u8  = get_bits(modifier, 5, 7);
+            v5u8  = get_bits(modifier, 3, 4); // Expect type with 2 bits -- only unsigned integer
+            v1u8  = get_bits_pow(modifier, 2, 2);
+            v2u8  = get_bits_pow(modifier, 1, 1);
+            v3u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            v2u16 = get_par16(v2u8);
+            v3u16 = get_par16(v3u8);
+            v1u32 = get_mval(v2u16, v5u8);
             ceu_wclock_enable(v1u16, (int32_t) unit2val(v1u32, v4u8), v3u16);
             break;
         case op_clken_c:
-            Modifier = getPar8(1);
-            v1u8  = getBitsPow(Modifier, 3, 3);
-            v2u8  = (uint8_t) (getBits(Modifier, 1, 2) + 1);
-            v3u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            v1u32 = getPar32(v2u8);
-            v3u16 = getPar16(v3u8);
+            modifier = get_par8(1);
+            v1u8  = get_bits_pow(modifier, 3, 3);
+            v2u8  = (uint8_t) (get_bits(modifier, 1, 2) + 1);
+            v3u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            v1u32 = get_par32(v2u8);
+            v3u16 = get_par16(v3u8);
             ceu_wclock_enable(v1u16, (int32_t) v1u32, v3u16);
             break;
         case op_set_v:
-            Modifier = getPar8(1);
-            v1u8  = getBitsPow(Modifier, 7, 7);
-            v4u8  = getBits(Modifier, 4, 6);
-            v2u8  = getBitsPow(Modifier, 3, 3);
-            v5u8  = getBits(Modifier, 0, 2);
-            v1u16 = getPar16(v1u8);
-            v2u16 = getPar16(v2u8);
-
+            modifier = get_par8(1);
+            v1u8  = get_bits_pow(modifier, 7, 7);
+            v4u8  = get_bits(modifier, 4, 6);
+            v2u8  = get_bits_pow(modifier, 3, 3);
+            v5u8  = get_bits(modifier, 0, 2);
+            v1u16 = get_par16(v1u8);
+            v2u16 = get_par16(v2u8);
             if (v5u8 == F32) {         // Source is a float
-                v1f = getMValf(v2u16);
-                //setMVal(*(uint32_t*) &v1f, v1u16, v5u8, v4u8);
+                v1f = get_mval_f(v2u16);
+                //setMVal(*(uint32_t*) &v1f, v1u16, v5u8, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
-                setMVal(v1u32, v1u16, v5u8, v4u8);
+                set_mval(v1u32, v1u16, v5u8, v4u8);
             } else {                 // Source is an integer
-                v1u32 = getMVal(v2u16, v5u8);
-                setMVal(v1u32, v1u16, v5u8, v4u8);
+                v1u32 = get_mval(v2u16, v5u8);
+                set_mval(v1u32, v1u16, v5u8, v4u8);
             }
             break;
         case op_setarr_vc:
-            Modifier = getPar8(1);
-            v8u8  = getPar8(1);
-
-            v1u8  = getBitsPow(Modifier, 7, 7);
-            v4u8  = getBits(Modifier, 4, 6);
-            v2u8  = getBitsPow(Modifier, 3, 3);
-            v5u8  = getBits(Modifier, 0, 2);
-            v3u8  = getBitsPow(v8u8, 2, 2);
-            v7u8  = (uint8_t) (getBits(v8u8, 0, 1) + 1);
+            modifier = get_par8(1);
+            v8u8  = get_par8(1);
+            v1u8  = get_bits_pow(modifier, 7, 7);
+            v4u8  = get_bits(modifier, 4, 6);
+            v2u8  = get_bits_pow(modifier, 3, 3);
+            v5u8  = get_bits(modifier, 0, 2);
+            v3u8  = get_bits_pow(v8u8, 2, 2);
+            v7u8  = (uint8_t) (get_bits(v8u8, 0, 1) + 1);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-
-            v1u16 = getPar16(v1u8);
-            v3u16 = getPar16(v2u8);
-            v4u16 = getPar16(v3u8);
-            v1u32 = getPar32(v7u8);
-
-            if (getMVal(v3u16, v5u8) >= v4u16)
-                evtError(E_IDXOVF);
+            v1u16 = get_par16(v1u8);
+            v3u16 = get_par16(v2u8);
+            v4u16 = get_par16(v3u8);
+            v1u32 = get_par32(v7u8);
+            if (get_mval(v3u16, v5u8) >= v4u16)
+                evt_error(E_IDXOVF);
             else {
                 if (v4u8 == F32) {
                     v1f = (float) v1u32;
-                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
+                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
-                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
+                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
                 } else {
-                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
+                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v5u8, v4u8);
                 }
             }
             break;
         case op_setarr_vv:
-            Modifier = getPar8(1);
-            v8u8  = getPar8(1);
-
-            v1u8  = getBitsPow(Modifier, 7, 7);
-            v4u8  = getBits(Modifier, 4, 6);
-            v2u8  = getBitsPow(Modifier, 3, 3);
-            v5u8  = getBits(Modifier, 0, 2);
-
-            v3u8  = getBitsPow(v8u8, 4, 4);
-            v7u8  = getBitsPow(v8u8, 3, 3);
-            v9u9  = getBits(v8u8, 0, 2);
-
+            modifier = get_par8(1);
+            v8u8  = get_par8(1);
+            v1u8  = get_bits_pow(modifier, 7, 7);
+            v4u8  = get_bits(modifier, 4, 6);
+            v2u8  = get_bits_pow(modifier, 3, 3);
+            v5u8  = get_bits(modifier, 0, 2);
+            v3u8  = get_bits_pow(v8u8, 4, 4);
+            v7u8  = get_bits_pow(v8u8, 3, 3);
+            v9u9  = get_bits(v8u8, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-
-            v1u16 = getPar16(v1u8);
-            v3u16 = getPar16(v2u8);
-            v4u16 = getPar16(v3u8);
-            v2u16 = getPar16(v7u8);
-
-            if (getMVal(v3u16, v5u8) >= v4u16)
-                evtError(E_IDXOVF);
+            v1u16 = get_par16(v1u8);
+            v3u16 = get_par16(v2u8);
+            v4u16 = get_par16(v3u8);
+            v2u16 = get_par16(v7u8);
+            if (get_mval(v3u16, v5u8) >= v4u16)
+                evt_error(E_IDXOVF);
             else {
                 if (v9u9 == F32) {         // Source is a float
-                    v1f = getMValf(v2u16);
-                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
+                    v1f = get_mval_f(v2u16);
+                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
-                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
+                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
                 } else {                 // Source is an integer
-                    v1u32 = getMVal(v2u16, v9u9);
-                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
+                    v1u32 = get_mval(v2u16, v9u9);
+                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), v9u9, v4u8);
                 }
             }
             break;
         case op_poparr_v:
-            v3u8  = getBitsPow(Modifier, 0, 0);
-            v8u8  = getPar8(1);
-            v1u8  = getBitsPow(v8u8, 7, 7);
-            v4u8  = getBits(v8u8, 4, 6);
-            v2u8  = getBitsPow(v8u8, 3, 3);
-            v5u8  = getBits(v8u8, 0, 2);
-
+            v3u8  = get_bits_pow(modifier, 0, 0);
+            v8u8  = get_par8(1);
+            v1u8  = get_bits_pow(v8u8, 7, 7);
+            v4u8  = get_bits(v8u8, 4, 6);
+            v2u8  = get_bits_pow(v8u8, 3, 3);
+            v5u8  = get_bits(v8u8, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-
-            v1u16 = getPar16(v1u8);
-            v3u16 = getPar16(v2u8);
-            v4u16 = getPar16(v3u8);
-            if (getMVal(v3u16, v5u8) >= v4u16)
-                evtError(E_IDXOVF);
+            v1u16 = get_par16(v1u8);
+            v3u16 = get_par16(v2u8);
+            v4u16 = get_par16(v3u8);
+            if (get_mval(v3u16, v5u8) >= v4u16)
+                evt_error(E_IDXOVF);
             else {
                 if (v4u8 == F32) { // Source/Target are float
                     v1f = popf();
-                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
+                    //setMVal(*(uint32_t*) &v1f, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8); //type-punning error
                     memcpy(&v1u32, &v1f, sizeof(float));
-                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
+                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), F32, v4u8);
                 } else { // Source/Target are integer
                     v1u32 = pop();
-                    setMVal(v1u32, v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v6u8), S32, v4u8);
+                    set_mval(v1u32, v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v6u8), S32, v4u8);
                 }
             }
             break;
         case op_pusharr_v:
-            v3u8  = getBitsPow(Modifier, 0, 0);
-            v8u8  = getPar8(1);
-            v1u8  = getBitsPow(v8u8, 7, 7);
-            v4u8  = getBits(v8u8, 4, 6);
-            v2u8  = getBitsPow(v8u8, 3, 3);
-            v5u8  = getBits(v8u8, 0, 2);
-
+            v3u8  = get_bits_pow(modifier, 0, 0);
+            v8u8  = get_par8(1);
+            v1u8  = get_bits_pow(v8u8, 7, 7);
+            v4u8  = get_bits(v8u8, 4, 6);
+            v2u8  = get_bits_pow(v8u8, 3, 3);
+            v5u8  = get_bits(v8u8, 0, 2);
             v1u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
             v2u8  = (v5u8 == F32) ? 4 : 1 << (v5u8 & 0x3);
-
-            v1u16 = getPar16(v1u8);
-            v3u16 = getPar16(v2u8);
-            v4u16 = getPar16(v3u8);
-
-            if (getMVal(v3u16, v5u8) >= v4u16)
-                evtError(E_IDXOVF);
+            v1u16 = get_par16(v1u8);
+            v3u16 = get_par16(v2u8);
+            v4u16 = get_par16(v3u8);
+            if (get_mval(v3u16, v5u8) >= v4u16)
+                evt_error(E_IDXOVF);
             else {
-                push(v1u16 + ((getMVal(v3u16, v5u8) % v4u16) * v1u8));
+                push(v1u16 + ((get_mval(v3u16, v5u8) % v4u16) * v1u8));
             }
             break;
         case op_getextdt_e:
-            v1u8  = getBitsPow(Modifier, 0, 0);
+            v1u8  = get_bits_pow(modifier, 0, 0);
             v1u16 = (uint16_t) pop();
-            v2u16 = getPar16(v1u8);
-            memcpy((MEM + v1u16), CEU->ext_data, v2u16);
+            v2u16 = get_par16(v1u8);
+            memcpy((mem + v1u16), CEU->ext_data, v2u16);
             break;
         case op_trg:
-            v1u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
+            v1u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
             ceu_trigger(v1u16, 0);
             break;
         case op_exec:
-            v1u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            PC = v1u16;
+            v1u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            pc = v1u16;
             break;
         case op_chkret:
-            v1u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            if (*(uint8_t*) (MEM + v1u16) > 0)
-                PC = PC + 1;
+            v1u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            if (*(uint8_t*) (mem + v1u16) > 0)
+                pc = pc + 1;
             break;
         case op_tkins_z:
-            v2u8  = getBitsPow(Modifier, 0, 0);
-            v4u8  = getPar8(1);
-            v3u8  = getBits(v4u8, 7, 7);
-            v1u8  = getBits(v4u8, 0, 6);
-            v3u16 = getPar16(v2u8);
+            v2u8  = get_bits_pow(modifier, 0, 0);
+            v4u8  = get_par8(1);
+            v3u8  = get_bits(v4u8, 7, 7);
+            v1u8  = get_bits(v4u8, 0, 6);
+            v3u16 = get_par16(v2u8);
             ceu_track_ins(0, v1u8, v3u8, v3u16);
             break;
         case op_push_c:
-            v1u8  = (uint8_t) (getBits(Modifier, 0, 1) + 1);
-            v1u32 = getPar32(v1u8);
+            v1u8  = (uint8_t) (get_bits(modifier, 0, 1) + 1);
+            v1u32 = get_par32(v1u8);
             push(v1u32);
             break;
         case op_cast:
-            v1u8 = getBits(Modifier, 0, 1);
+            v1u8 = get_bits(modifier, 0, 1);
             switch (v1u8) {
                 case U32_F:
                     v1u32 = pop();
-                    pushf((float) *(uint32_t*) &v1u32);
+                    push_f((float) *(uint32_t*) &v1u32);
                     break;
                 case S32_F:
                     v1u32 = pop();
-                    pushf((float) *(int32_t*) &v1u32);
+                    push_f((float) *(int32_t*) &v1u32);
                     break;
                 case F_U32:
                     v1f = popf();
@@ -656,11 +744,11 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             }
             break;
         case op_memclr:
-            v1u8  = getBitsPow(Modifier, 1, 1);
-            v2u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            v2u16 = getPar16(v2u8);
-            memset((MEM+v1u16),0,v2u16); // does not work in TOSSIM
+            v1u8  = get_bits_pow(modifier, 1, 1);
+            v2u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            v2u16 = get_par16(v2u8);
+            memset((mem+v1u16),0,v2u16); // does not work in TOSSIM
             //{
             //    int x;
             //    for (x = 0; x < v2u16; x++)
@@ -668,180 +756,179 @@ void Decoder(uint8_t Opcode, uint8_t Modifier) {
             //}
             break;
         case op_ifelse:
-            v1u8  = getBitsPow(Modifier, 1, 1);
-            v2u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            v2u16 = getPar16(v2u8);
+            v1u8  = get_bits_pow(modifier, 1, 1);
+            v2u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            v2u16 = get_par16(v2u8);
             if (pop())
-                PC = v1u16;
+                pc = v1u16;
             else
-                PC = v2u16;
+                pc = v2u16;
             break;
         case op_asen:
-            v1u8  = getBitsPow(Modifier, 1, 1);
-            v2u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            v3u16 = getPar16(v2u8);
+            v1u8  = get_bits_pow(modifier, 1, 1);
+            v2u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            v3u16 = get_par16(v2u8);
             ceu_async_enable(v1u16, v3u16);
             break;
         case op_tkclr:
-            v1u8  = getBitsPow(Modifier, 1, 1);
-            v2u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            v2u16 = getPar16(v2u8);
+            v1u8  = get_bits_pow(modifier, 1, 1);
+            v2u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            v2u16 = get_par16(v2u8);
             ceu_track_clr(v1u16, v2u16);
             break;
-        case op_outEvt_c:
-            v1u8  = (uint8_t) (getBits(Modifier, 0, 1) + 1);
-            v3u8  = getPar8(1);
-            v1u32 = getPar32(v1u8);
-            VMCustom_procOutEvt(v3u8, v1u32);
+        case op_outevt_c:
+            v1u8  = (uint8_t) (get_bits(modifier, 0, 1) + 1);
+            v3u8  = get_par8(1);
+            v1u32 = get_par32(v1u8);
+            vm_custom_proc_outevt(v3u8, v1u32);
             break;
         case op_getextdt_v:
-            v1u8  = getBitsPow(Modifier, 1, 1);
-            v2u8  = getBitsPow(Modifier, 0, 0);
-            v1u16 = getPar16(v1u8);
-            v2u16 = getPar16(v2u8);
-            memcpy((MEM + v1u16), CEU->ext_data, v2u16);
+            v1u8  = get_bits_pow(modifier, 1, 1);
+            v2u8  = get_bits_pow(modifier, 0, 0);
+            v1u16 = get_par16(v1u8);
+            v2u16 = get_par16(v2u8);
+            memcpy((mem + v1u16), CEU->ext_data, v2u16);
             break;
         case op_inc:
-            v4u8  = getBits(Modifier, 0, 1);
+            v4u8  = get_bits(modifier, 0, 1);
             v6u8  = 1 << v4u8;
             v1u16 = (uint16_t) pop();
-            setMVal((getMVal(v1u16, v4u8) + 1), v1u16, v4u8, v4u8);
+            set_mval((get_mval(v1u16, v4u8) + 1), v1u16, v4u8, v4u8);
             break;
         case op_dec:
-            v4u8  = getBits(Modifier, 0, 1);
+            v4u8  = get_bits(modifier, 0, 1);
             v6u8  = 1 << v4u8;
             v1u16 = (uint16_t) pop();
-            setMVal((getMVal(v1u16, v4u8) - 1), v1u16, v4u8, v4u8);
+            set_mval((get_mval(v1u16, v4u8) - 1), v1u16, v4u8, v4u8);
             break;
         case op_set_e:
-            v4u8  = getBits(Modifier, 0, 2);
+            v4u8  = get_bits(modifier, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
             v1u16 = (uint16_t) pop();
             if (v4u8 == F32) {
                 v1f = popf();
-                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
-                setMVal(v1u32, v1u16, F32, v4u8);
+                set_mval(v1u32, v1u16, F32, v4u8);
             } else {
                 v1u32 = pop();
-                setMVal(v1u32, v1u16, S32, v4u8);
+                set_mval(v1u32, v1u16, S32, v4u8);
             }
             break;
         case op_deref:
-            v1u8  = getBits(Modifier, 0, 2);
+            v1u8  = get_bits(modifier, 0, 2);
             v1u16 = (uint16_t) pop();
             switch (v1u8) {
                 case U8:
-                    push((uint8_t) getMVal(v1u16, v1u8));
+                    push((uint8_t) get_mval(v1u16, v1u8));
                     break;
                 case U16:
-                    push((uint16_t) getMVal(v1u16, v1u8));
+                    push((uint16_t) get_mval(v1u16, v1u8));
                     break;
                 case U32:
-                    push((uint32_t) getMVal(v1u16, v1u8));
+                    push((uint32_t) get_mval(v1u16, v1u8));
                     break;
                 case F32:
-                    pushf(getMValf(v1u16));
+                    push_f(get_mval_f(v1u16));
                     break;
                 case S8:
-                    push((int8_t) getMVal(v1u16, v1u8));
+                    push((int8_t) get_mval(v1u16, v1u8));
                     break;
                 case S16:
-                    push((int16_t) getMVal(v1u16, v1u8));
+                    push((int16_t) get_mval(v1u16, v1u8));
                     break;
                 case S32:
-                    push((int32_t) getMVal(v1u16, v1u8));
+                    push((int32_t) get_mval(v1u16, v1u8));
                     break;
             }
             break;
         case op_memcpy:
-            v1u8  = getBitsPow(Modifier, 2, 2);
-            v2u8  = getBitsPow(Modifier, 1, 1);
-            v3u8  = getBitsPow(Modifier, 0, 0);
-            v2u16 = getPar16(v1u8);
-            v1u16 = getPar16(v2u8);
-            v3u16 = getPar16(v3u8);
-            memcpy((void*) (MEM + v3u16), (void*) (MEM + v1u16), v2u16);
+            v1u8  = get_bits_pow(modifier, 2, 2);
+            v2u8  = get_bits_pow(modifier, 1, 1);
+            v3u8  = get_bits_pow(modifier, 0, 0);
+            v2u16 = get_par16(v1u8);
+            v1u16 = get_par16(v2u8);
+            v3u16 = get_par16(v3u8);
+            memcpy((void*) (mem + v3u16), (void*) (mem + v1u16), v2u16);
             break;
         case op_tkins_max:
-            v2u8  = (uint8_t) (CEU->stack + getBits(Modifier, 1, 2));
-            v1u8  = getBitsPow(Modifier, 0, 0);
-            v3u16 = getPar16(v1u8);
+            v2u8  = (uint8_t) (CEU->stack + get_bits(modifier, 1, 2));
+            v1u8  = get_bits_pow(modifier, 0, 0);
+            v3u16 = get_par16(v1u8);
             ceu_track_ins(v2u8, 255, 0, v3u16);
             break;
         case op_push_v:
-            v1u8  = getBitsPow(Modifier, 3, 3);
-            v4u8  = getBits(Modifier, 0, 2);
-            v1u16 = getPar16(v1u8);
+            v1u8  = get_bits_pow(modifier, 3, 3);
+            v4u8  = get_bits(modifier, 0, 2);
+            v1u16 = get_par16(v1u8);
             if (v4u8 == F32) {
-                pushf(getMValf(v1u16));
+                push_f(get_mval_f(v1u16));
             } else {
-                push(getMVal(v1u16, v4u8));
+                push(get_mval(v1u16, v4u8));
             }
             break;
         case op_pop:
-            v1u8  = getBitsPow(Modifier, 3, 3);
-            v4u8  = getBits(Modifier, 0, 2);
-            v1u16 = getPar16(v1u8);
+            v1u8  = get_bits_pow(modifier, 3, 3);
+            v4u8  = get_bits(modifier, 0, 2);
+            v1u16 = get_par16(v1u8);
             if (v4u8 == F32) {
                 v1f = popf();
-                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1u32, &v1f, sizeof(float));
-                setMVal(v1u32, v1u16, F32, v4u8);
+                set_mval(v1u32, v1u16, F32, v4u8);
             } else {
                 v1u32 = pop();
-                setMVal(v1u32, v1u16, S32, v4u8);
+                set_mval(v1u32, v1u16, S32, v4u8);
             }
             break;
         case op_outEvt_v:
-            v2u8  = getBitsPow(Modifier, 3, 3);
-            v3u8  = getPar8(1);
-            v1u16 = getPar16(v2u8);
-            VMCustom_procOutEvt(v3u8, v1u16);
+            v2u8  = get_bits_pow(modifier, 3, 3);
+            v3u8  = get_par8(1);
+            v1u16 = get_par16(v2u8);
+            vm_custom_proc_outevt(v3u8, v1u16);
             break;
         case op_set_c:
-            v4u8  = getBits(Modifier, 0, 2);
+            v4u8  = get_bits(modifier, 0, 2);
             v6u8  = (v4u8 == F32) ? 4 : 1 << (v4u8 & 0x3);
-            v1u8  = getBitsPow(Modifier, 3, 3);
-            v2u8  = (uint8_t) (getBits(Modifier, 4, 5) + 1);
-            v1u16 = getPar16(v1u8);
-            v1u32 = getPar32(v2u8);
+            v1u8  = get_bits_pow(modifier, 3, 3);
+            v2u8  = (uint8_t) (get_bits(modifier, 4, 5) + 1);
+            v1u16 = get_par16(v1u8);
+            v1u32 = get_par32(v2u8);
             if (v4u8 == F32) {
                 //v1f = *(float*) &v1u32;
-                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8);
+                //setMVal(*(uint32_t*) &v1f, v1u16, F32, v4u8); //type-punning error
                 memcpy(&v1f, &v1u32, sizeof(uint32_t)); //TODO: revisar, doble conversion
                 memcpy(&v2u32, &v1f, sizeof(float));
-                setMVal(v2u32, v1u16, F32, v4u8);
+                set_mval(v2u32, v1u16, F32, v4u8);
 
             } else {
-                setMVal(v1u32, v1u16, S32, v4u8);
+                set_mval(v1u32, v1u16, S32, v4u8);
             }
             break;
     }
 }
 
+//////////////// internal /////////////////
 
-///////////////////////// aux ///////////////////////////////////////
-
-void evtError(uint8_t v1) {
+void evt_error(uint8_t v1) {
     printf("evtError %d\n", v1);
 }
 
 //
-void VMCustom_reset(void) {
+void vm_custom_reset(void) {
     printf("VMCustom_reset\n");
 }
 
 //
-void VMCustom_callFunction(uint8_t v) {
+void vm_custom_call_function(uint8_t v) {
     printf("VMCustom_callFunction %d\n", v);
 }
 
 //
-void VMCustom_procOutEvt(uint8_t v1, uint32_t v2) {
+void vm_custom_proc_outevt(uint8_t v1, uint32_t v2) {
     printf("VMCustom_procOutEvt %d, %d\n", v1, v2);
 }
 
@@ -870,76 +957,76 @@ void ceu_async_enable(uint16_t v1, uint16_t v2) {
     printf("ceu_async_enable %d, %d\n", v1, v2);
 }
 
-/////////////////////////////////////////
+/////////////////// aux ///////////////////
 
 // Get constant values from program memory. Convert big-endian to the local type endian.
-uint8_t getPar8(uint8_t p_len) {
-    uint8_t temp = (uint8_t) CEU_data[PC];
-    PC++;
+uint8_t get_par8(uint8_t p_len) {
+    uint8_t temp = (uint8_t) ceu_data[pc];
+    pc++;
     return temp;
 }
 
-uint16_t getPar16(uint8_t p_len) {
+uint16_t get_par16(uint8_t p_len) {
     uint16_t temp = 0L;
     switch (p_len) {
         case 1:
-            temp = ((uint16_t) ((uint8_t) CEU_data[PC]) << 0);
-            PC++;
+            temp = ((uint16_t) ((uint8_t) ceu_data[pc]) << 0);
+            pc++;
             break;
         case 2:
-            temp = ((uint16_t) ((uint8_t) CEU_data[PC]) << 8);
-            PC++;
-            temp = temp + ((uint16_t) ((uint8_t) CEU_data[PC]) << 0);
-            PC++;
+            temp = ((uint16_t) ((uint8_t) ceu_data[pc]) << 8);
+            pc++;
+            temp = temp + ((uint16_t) ((uint8_t) ceu_data[pc]) << 0);
+            pc++;
             break;
     }
     return temp;
 }
 
-uint32_t getPar32(uint8_t p_len) {
+uint32_t get_par32(uint8_t p_len) {
     uint32_t temp = 0L;
     switch (p_len) {
         case 1:
-            temp = ((uint32_t) ((uint8_t) CEU_data[PC]) << 0);
-            PC++;
+            temp = ((uint32_t) ((uint8_t) ceu_data[pc]) << 0);
+            pc++;
             break;
         case 2:
-            temp = ((uint32_t) ((uint8_t) CEU_data[PC]) << 8);
-            PC++;
-            temp = temp + ((uint32_t) ((uint8_t) CEU_data[PC]) << 0);
-            PC++;
+            temp = ((uint32_t) ((uint8_t) ceu_data[pc]) << 8);
+            pc++;
+            temp = temp + ((uint32_t) ((uint8_t) ceu_data[pc]) << 0);
+            pc++;
             break;
         case 3:
-            temp = ((uint32_t) ((uint8_t) CEU_data[PC]) << 16);
-            PC++;
-            temp = temp + ((uint32_t) ((uint8_t) CEU_data[PC]) << 8);
-            PC++;
-            temp = temp + ((uint32_t) ((uint8_t) CEU_data[PC]) << 0);
-            PC++;
+            temp = ((uint32_t) ((uint8_t) ceu_data[pc]) << 16);
+            pc++;
+            temp = temp + ((uint32_t) ((uint8_t) ceu_data[pc]) << 8);
+            pc++;
+            temp = temp + ((uint32_t) ((uint8_t) ceu_data[pc]) << 0);
+            pc++;
             break;
         case 4:
-            temp = ((uint32_t) ((uint8_t) CEU_data[PC]) << 24);
-            PC++;
-            temp = temp + ((uint32_t) ((uint8_t) CEU_data[PC]) << 16);
-            PC++;
-            temp = temp + ((uint32_t) ((uint8_t) CEU_data[PC]) << 8);
-            PC++;
-            temp = temp + ((uint32_t) ((uint8_t) CEU_data[PC]) << 0);
-            PC++;
+            temp = ((uint32_t) ((uint8_t) ceu_data[pc]) << 24);
+            pc++;
+            temp = temp + ((uint32_t) ((uint8_t) ceu_data[pc]) << 16);
+            pc++;
+            temp = temp + ((uint32_t) ((uint8_t) ceu_data[pc]) << 8);
+            pc++;
+            temp = temp + ((uint32_t) ((uint8_t) ceu_data[pc]) << 0);
+            pc++;
             break;
     }
     return temp;
 }
 
-uint8_t getBits(uint8_t data, uint8_t stBit, uint8_t endBit) {
+uint8_t get_bits(uint8_t data, uint8_t stBit, uint8_t endBit) {
     uint8_t ret = 0;
     ret = (data << (7 - endBit));
     ret = ret >> (7 - endBit + stBit);
     return ret;
 }
 
-uint8_t getBitsPow(uint8_t data, uint8_t stBit, uint8_t endBit) {
-    return (1 << getBits(data, stBit, endBit));
+uint8_t get_bits_pow(uint8_t data, uint8_t stBit, uint8_t endBit) {
+    return (1 << get_bits(data, stBit, endBit));
 }
 
 uint32_t unit2val(uint32_t val, uint8_t unit) {
@@ -957,88 +1044,88 @@ uint32_t unit2val(uint32_t val, uint8_t unit) {
 }
 
 void push(uint32_t value) {
-    currStack = currStack - 4;
-    if ((currStack) > envData.ProgEnd)
-        *(uint32_t*) (CEU_data + currStack) = value;
+    curr_stack = curr_stack - 4;
+    if ((curr_stack) > env_data.prog_end)
+        *(uint32_t*) (ceu_data + curr_stack) = value;
     else {
-        evtError(E_STKOVF);
+        evt_error(E_STKOVF);
         // stop VM execution to prEVENT unexpected state
-        haltedFlag = true;
-        VMCustom_reset();
+        halted_flag = true;
+        vm_custom_reset();
     }
 }
 
-void pushf(float value) {
-    currStack = currStack - 4;
-    if ((currStack) > envData.ProgEnd) {
-        *(float*) (CEU_data + currStack) = value;
+void push_f(float value) {
+    curr_stack = curr_stack - 4;
+    if ((curr_stack) > env_data.prog_end) {
+        *(float*) (ceu_data + curr_stack) = value;
     } else {
-        evtError(E_STKOVF);
+        evt_error(E_STKOVF);
         // stop VM execution to prEVENT unexpected state
-        haltedFlag = true;
-        VMCustom_reset();
+        halted_flag = true;
+        vm_custom_reset();
     }
 }
 
 uint32_t pop() {
-    currStack = currStack + 4;
-    return *(uint32_t*) (CEU_data + currStack - 4);
+    curr_stack = curr_stack + 4;
+    return *(uint32_t*) (ceu_data + curr_stack - 4);
 }
 
 float popf() {
-    currStack = currStack + 4;
-    return *(float*) (CEU_data + currStack - 4);
+    curr_stack = curr_stack + 4;
+    return *(float*) (ceu_data + curr_stack - 4);
 }
 
-uint32_t getMVal(uint16_t Maddr, uint8_t type) {
+uint32_t get_mval(uint16_t Maddr, uint8_t type) {
     switch (type) {
         case U8:
-            return (uint32_t) *(uint8_t*) (MEM + Maddr);
+            return (uint32_t) *(uint8_t*) (mem + Maddr);
         case U16:
-            return (uint32_t) *(uint16_t*) (MEM + Maddr);
+            return (uint32_t) *(uint16_t*) (mem + Maddr);
         case U32:
-            return (uint32_t) *(uint32_t*) (MEM + Maddr);
+            return (uint32_t) *(uint32_t*) (mem + Maddr);
         case S8:
-            return (uint32_t) *(int8_t*) (MEM + Maddr);
+            return (uint32_t) *(int8_t*) (mem + Maddr);
         case S16:
-            return (uint32_t) *(int16_t*) (MEM + Maddr);
+            return (uint32_t) *(int16_t*) (mem + Maddr);
         case S32:
-            return (uint32_t) *(int32_t*) (MEM + Maddr);
+            return (uint32_t) *(int32_t*) (mem + Maddr);
     }
     printf("ERROR VM::getMVal(): Invalid type=%d\n", type);
     return 0;
 }
 
-float getMValf(uint16_t Maddr) {
-    return (float) *(float*) (MEM + Maddr);
+float get_mval_f(uint16_t Maddr) {
+    return (float) *(float*) (mem + Maddr);
 }
 
-void setMVal(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp) {
+void set_mval(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp) {
     if (fromTp == F32) {
         //float value = *(float*) &buffer; //type-punning error
         float value;
         memcpy(&value, &buffer, sizeof(uint32_t));
         switch (toTp) {
             case U8:
-                *(uint8_t*) (MEM + Maddr) = (uint8_t) value;
+                *(uint8_t*) (mem + Maddr) = (uint8_t) value;
                 return;
             case U16:
-                *(uint16_t*) (MEM + Maddr) = (uint16_t) value;
+                *(uint16_t*) (mem + Maddr) = (uint16_t) value;
                 return;
             case U32:
-                *(uint32_t*) (MEM + Maddr) = (uint32_t) value;
+                *(uint32_t*) (mem + Maddr) = (uint32_t) value;
                 return;
             case F32:
-                *(float*) (MEM + Maddr) = (float) value;
+                *(float*) (mem + Maddr) = (float) value;
                 return;
             case S8:
-                *(int8_t*) (MEM + Maddr) = (int8_t) value;
+                *(int8_t*) (mem + Maddr) = (int8_t) value;
                 return;
             case S16:
-                *(int16_t*) (MEM + Maddr) = (int16_t) value;
+                *(int16_t*) (mem + Maddr) = (int16_t) value;
                 return;
             case S32:
-                *(int32_t*) (MEM + Maddr) = (int32_t) value;
+                *(int32_t*) (mem + Maddr) = (int32_t) value;
                 return;
         }
     } else {
@@ -1046,50 +1133,50 @@ void setMVal(uint32_t buffer, uint16_t Maddr, uint8_t fromTp, uint8_t toTp) {
             uint32_t value = *(uint32_t*) &buffer;
             switch (toTp) {
                 case U8:
-                    *(uint8_t*) (MEM + Maddr) = (uint8_t) value;
+                    *(uint8_t*) (mem + Maddr) = (uint8_t) value;
                     return;
                 case U16:
-                    *(uint16_t*) (MEM + Maddr) = (uint16_t) value;
+                    *(uint16_t*) (mem + Maddr) = (uint16_t) value;
                     return;
                 case U32:
-                    *(uint32_t*) (MEM + Maddr) = (uint32_t) value;
+                    *(uint32_t*) (mem + Maddr) = (uint32_t) value;
                     return;
                 case F32:
-                    *(float*) (MEM + Maddr) = (float) value;
+                    *(float*) (mem + Maddr) = (float) value;
                     return;
                 case S8:
-                    *(int8_t*) (MEM + Maddr) = (int8_t) value;
+                    *(int8_t*) (mem + Maddr) = (int8_t) value;
                     return;
                 case S16:
-                    *(int16_t*) (MEM + Maddr) = (int16_t) value;
+                    *(int16_t*) (mem + Maddr) = (int16_t) value;
                     return;
                 case S32:
-                    *(int32_t*) (MEM + Maddr) = (int32_t) value;
+                    *(int32_t*) (mem + Maddr) = (int32_t) value;
                     return;
             }
         } else {  // from signaled integer
             int32_t value = *(int32_t*) &buffer;
             switch (toTp) {
                 case U8:
-                    *(uint8_t*) (MEM + Maddr) = (uint8_t) value;
+                    *(uint8_t*) (mem + Maddr) = (uint8_t) value;
                     return;
                 case U16:
-                    *(uint16_t*) (MEM + Maddr) = (uint16_t) value;
+                    *(uint16_t*) (mem + Maddr) = (uint16_t) value;
                     return;
                 case U32:
-                    *(uint32_t*) (MEM + Maddr) = (uint32_t) value;
+                    *(uint32_t*) (mem + Maddr) = (uint32_t) value;
                     return;
                 case F32:
-                    *(float*) (MEM + Maddr) = (float) value;
+                    *(float*) (mem + Maddr) = (float) value;
                     return;
                 case S8:
-                    *(int8_t*) (MEM + Maddr) = (int8_t) value;
+                    *(int8_t*) (mem + Maddr) = (int8_t) value;
                     return;
                 case S16:
-                    *(int16_t*) (MEM + Maddr) = (int16_t) value;
+                    *(int16_t*) (mem + Maddr) = (int16_t) value;
                     return;
                 case S32:
-                    *(int32_t*) (MEM + Maddr) = (int32_t) value;
+                    *(int32_t*) (mem + Maddr) = (int32_t) value;
                     return;
             }
         }
